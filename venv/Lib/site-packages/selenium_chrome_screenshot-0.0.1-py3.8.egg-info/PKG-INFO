@@ -1,0 +1,27 @@
+Metadata-Version: 1.1
+Name: selenium-chrome-screenshot
+Version: 0.0.1
+Summary: UNKNOWN
+Home-page: http://github.com/sanscore/selenium-chrome-screenshot/
+Author: Grant Welch
+Author-email: gwelch925 at gmail.com
+License: Apache License 2.0
+Description: UNKNOWN
+Keywords: selenium chrome screenshot
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Session
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Software Development :: Libraries
