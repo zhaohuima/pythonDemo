@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Master - Multi-agent Orchestration System with RAG</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Product Master</h1>
+            <p class="subtitle">Multi-agent Orchestration System with RAG</p>
+        </header>
+
+        <!-- User Input Section -->
+        <section class="input-section">
+            <h2>📝 Product Requirements Input</h2>
+            <div class="input-container">
+                <textarea 
+                    id="userInput" 
+                    placeholder="Enter your product requirements...&#10;Example:&#10;We want to develop a supply chain management system for e-commerce enterprises.&#10;Functional requirements include:&#10;1. Real-time inventory tracking and management&#10;2. Supplier collaboration platform&#10;3. Order forecasting and optimization&#10;4. Cost analysis and reporting"
+                    rows="10"
+                ></textarea>
+                <button id="submitBtn" class="submit-btn" onclick="startOrchestration()">
+                    <span class="btn-text">Start Orchestration</span>
+                    <span class="btn-icon">▶</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Execution Process Section -->
+        <section class="execution-section" id="executionSection" style="display: none;">
+            <h2>⚙️ Execution Process</h2>
+            
+            <!-- Execution Flow Graph -->
+            <div class="graph-container">
+                <div class="graph" id="executionGraph">
+                    <div class="graph-node start-node">
+                        <div class="node-icon">🚀</div>
+                        <div class="node-label">Start</div>
+                    </div>
+                    
+                    <div class="graph-arrow">↓</div>
+                    
+                    <div class="graph-node" id="node-research">
+                        <div class="node-icon">📚</div>
+                        <div class="node-label">Product Researcher</div>
+                        <div class="node-status" id="status-research">Waiting</div>
+                    </div>
+                    
+                    <div class="graph-arrow">↓</div>
+                    
+                    <div class="graph-node" id="node-documentation">
+                        <div class="node-icon">📝</div>
+                        <div class="node-label">Doc Assistant</div>
+                        <div class="node-status" id="status-documentation">Waiting</div>
+                    </div>
+                    
+                    <div class="graph-arrow">↓</div>
+                    
+                    <div class="graph-node" id="node-evaluation">
+                        <div class="node-icon">🔍</div>
+                        <div class="node-label">Feasibility Evaluator</div>
+                        <div class="node-status" id="status-evaluation">Waiting</div>
+                    </div>
+                    
+                    <div class="graph-arrow">↓</div>
+                    
+                    <div class="graph-node" id="node-summarization">
+                        <div class="node-icon">🎯</div>
+                        <div class="node-label">Result Aggregation</div>
+                        <div class="node-status" id="status-summarization">Waiting</div>
+                    </div>
+                    
+                    <div class="graph-arrow">↓</div>
+                    
+                    <div class="graph-node end-node" id="node-finished">
+                        <div class="node-icon">✅</div>
+                        <div class="node-label">Complete</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Execution Log -->
+            <div class="log-container">
+                <h3>Execution Log</h3>
+                <div class="log-content" id="executionLog">
+                    <div class="log-entry">Waiting for execution to start...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <h2>📊 Execution Results</h2>
+            
+            <!-- Summary Information -->
+            <div class="summary-card">
+                <h3>🎯 Final Summary</h3>
+                <div class="summary-content" id="finalSummary">
+                    <div class="summary-item">
+                        <span class="summary-label">Feasibility Score:</span>
+                        <span class="summary-value" id="feasibilityScore">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Results -->
+            <div class="results-tabs">
+                <button class="tab-btn active" onclick="showTab('research', event)">📚 Product Research</button>
+                <button class="tab-btn" onclick="showTab('documentation', event)">📝 Product Documentation</button>
+                <button class="tab-btn" onclick="showTab('evaluation', event)">🔍 Feasibility Evaluation</button>
+                <button class="tab-btn" onclick="showTab('summary', event)">🎯 Final Summary</button>
+            </div>
+
+            <div class="tab-content">
+                <div id="tab-research" class="tab-pane active">
+                    <div class="result-content" id="researchResult"></div>
+                </div>
+                <div id="tab-documentation" class="tab-pane">
+                    <div class="result-content" id="documentationResult"></div>
+                </div>
+                <div id="tab-evaluation" class="tab-pane">
+                    <div class="result-content" id="evaluationResult"></div>
+                </div>
+                <div id="tab-summary" class="tab-pane">
+                    <div class="result-content" id="summaryResult"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Processing...</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

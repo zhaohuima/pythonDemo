@@ -20,24 +20,7 @@ def main():
     product_master = ProductMaster()
     
     # 示例用户输入：产品需求 | Example user input: product requirement
-    user_requirement = """
-    我们想要开发一个针对电商企业的供应链管理系统。
-    功能需求包括：
-    1. 实时库存追踪和管理
-    2. 供应商协作平台
-    3. 订单预测和优化
-    4. 成本分析和报告
-    
-    我们的目标是：
-    - 提高供应链效率30%
-    - 降低库存成本20%
-    - 缩短交付周期
-    - 改善供应商关系
-    
-    目标市场：中型电商企业（年销售额5000万-2亿）
-    时间框架：6个月内上线MVP
-    
-    English Translation:
+    user_requirement = """   
     We want to develop a supply chain management system for e-commerce enterprises.
     Functional requirements include:
     1. Real-time inventory tracking and management
@@ -56,7 +39,7 @@ def main():
     """
     
     # 执行编排流程 | Execute orchestration workflow
-    print("\n🚀 Starting Multi-Agent Orchestration System")
+    print("\n🚀 Starting Multi-Agent Orchestration System in English")
     print("🚀 启动多智能体编排系统\n")
     
     # 调用 orchestrate 方法执行整个流程 | Call orchestrate method to execute entire workflow

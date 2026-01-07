@@ -7,7 +7,7 @@ Responsible for orchestrating workflow of three agents and aggregating outputs
 import json
 from typing import Any, Dict, Optional
 from datetime import datetime
-from agents import ProductResearcher, DocAssistant, FeasibilityEvaluator, init_llm
+from agents import ProductResearcher, DocAssistant, FeasibilityEvaluator, init_llm, parse_json_response
 
 
 class ProductMaster:
@@ -134,55 +134,47 @@ class ProductMaster:
         Returns:
             包含关键要点的汇总 | Dictionary containing key points summary
         """
-        # 构建提示词进行汇总 | Build prompt for summarization
+        # Build prompt for summarization
         prompt = f"""
-基于以下来自三个不同Agent的输出，请提炼核心要点和行动建议：
+Based on the following outputs from three different agents, please extract key points and action recommendations:
 
-用户需求 | User Requirement:
+User Requirement:
 {user_input}
 
-产品研究员的调研结果 | Product Researcher's Results:
+Product Researcher's Results:
 {json.dumps(research, ensure_ascii=False)}
 
-产品文档摘要 | Document Summary:
+Document Summary:
 {doc[:500]}...
 
-可行性评估结果 | Feasibility Evaluation:
+Feasibility Evaluation Results:
 {json.dumps(evaluation, ensure_ascii=False)}
 
-请生成一份高层次的执行摘要，包含：
-1. 项目可行性评分 (1-10分) | Project Feasibility Score (1-10)
-2. 核心价值主张 | Core Value Propositions
-3. 关键成功因素 | Key Success Factors
-4. 主要风险与缓解策略 | Key Risks and Mitigation Strategies
-5. 推荐的后续步骤 | Recommended Next Steps
+Please generate a high-level executive summary that includes:
+1. Project Feasibility Score (1-10)
+2. Core Value Propositions
+3. Key Success Factors
+4. Key Risks and Mitigation Strategies
+5. Recommended Next Steps
 
-请以JSON格式返回，字段如下：
-- feasibility_score: 可行性评分
-- value_propositions: 核心价值主张（列表）
-- success_factors: 关键成功因素（列表）
-- risks_and_mitigations: 风险和缓解策略（列表）
-- next_steps: 推荐的后续步骤（列表）
+Please return in JSON format with the following fields (all content must be in English):
+- feasibility_score: Feasibility score (numeric value 1-10)
+- value_propositions: Core value propositions (list of strings in English)
+- success_factors: Key success factors (list of strings in English)
+- risks_and_mitigations: Risks and mitigation strategies (list of strings in English)
+- next_steps: Recommended next steps (list of strings in English)
 
-Return in JSON format as specified above.
+IMPORTANT: All text content in the JSON response must be in English only.
 """
         
         # 调用LLM进行汇总 | Call LLM for summarization
-        summary_response = self.llm.predict(prompt)
+        summary_response = self.llm.invoke(prompt)
         
         # 尝试解析JSON | Try to parse JSON
-        try:
-            summary = json.loads(summary_response)
-        except:
-            # 如果解析失败，返回原始文本 | If parsing fails, return raw text
-            summary = {
-                "raw_summary": summary_response,
-                "feasibility_score": "待评估 | To be evaluated",
-                "value_propositions": [],
-                "success_factors": [],
-                "risks_and_mitigations": [],
-                "next_steps": []
-            }
+        summary = parse_json_response(summary_response, [
+            "feasibility_score", "value_propositions", "success_factors",
+            "risks_and_mitigations", "next_steps"
+        ])
         
         return summary
     
@@ -200,20 +192,20 @@ Return in JSON format as specified above.
         # 绘制执行流程图 | Draw execution flow graph
         graph = """
         ┌─────────────────────────────────────────────────────────────┐
-        │              🎯 Product Master Orchestrator                 │
-        │              产品主人编排器                                 │
+        │           📥 User Input: Product Requirements               │
+        │           用户输入：产品需求                                 │
         └─────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
         ┌─────────────────────────────────────────────────────────────┐
-        │  User Input: Product Requirements                           │
-        │  用户输入：产品需求                                         │
+        │              🎯 Product Master Orchestrator                 │
+        │              产品主人编排器（接收输入并分发任务）            │
         └─────────────────────────────────────────────────────────────┘
                                     │
                   ┌─────────────────┼─────────────────┐
                   ▼                 ▼                 ▼
         ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-        │ Product          │ │ Doc              │ │ Feasibility      │
+        │ 📚 Product       │ │ 📝 Doc           │ │ 🔍 Feasibility   │
         │ Researcher       │ │ Assistant        │ │ Evaluator        │
         │                  │ │                  │ │                  │
         │ • User Research  │ │ • PRD Document   │ │ • Tech Feasible  │
