@@ -51,7 +51,7 @@ async function startOrchestration() {
         addLog('error', 'Error: ' + error.message);
         hideLoading();
         submitBtn.disabled = false;
-        submitBtn.querySelector('.btn-text').textContent = 'Start Orchestration';
+        submitBtn.querySelector('.btn-text').textContent = 'Start Design';
     }
 }
 
@@ -84,7 +84,7 @@ function startStatusPolling() {
                 // Restore submit button
                 const submitBtn = document.getElementById('submitBtn');
                 submitBtn.disabled = false;
-                submitBtn.querySelector('.btn-text').textContent = 'Start Orchestration';
+                submitBtn.querySelector('.btn-text').textContent = 'Start Design';
             }
         } catch (error) {
             console.error('Status check failed:', error);
@@ -464,8 +464,8 @@ function showTab(tabName, event) {
     if (event && event.target) {
         event.target.classList.add('active');
     } else {
-        // 如果没有event参数，通过索引找到对应的按钮
-        const tabNames = ['research', 'documentation', 'evaluation', 'summary'];
+        // 如果没有event参数，通过索引找到对应的按钮（新顺序）
+        const tabNames = ['research', 'evaluation', 'summary', 'documentation'];
         const index = tabNames.indexOf(tabName);
         const buttons = document.querySelectorAll('.tab-btn');
         if (buttons[index]) {
@@ -482,8 +482,8 @@ function resetExecutionState() {
     
     document.getElementById('executionLog').innerHTML = '';
     
-    // Reset status text
-    ['research', 'documentation', 'evaluation', 'summarization'].forEach(step => {
+    // Reset status text (new order: research -> evaluation -> summarization -> documentation)
+    ['research', 'evaluation', 'summarization', 'documentation'].forEach(step => {
         const statusEl = document.getElementById(`status-${step}`);
         if (statusEl) {
             statusEl.textContent = 'Waiting';
