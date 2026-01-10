@@ -505,3 +505,25 @@ body {
         flex-wrap: wrap;
     }
 }
+
+/* 开发者信息样式 */
+.developer-credit {
+    position: fixed;
+    right: 20px;
+    bottom: 40px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 响应式：在小屏幕上隐藏或调整位置 */
+@media (max-width: 768px) {
+    .developer-credit {
+        display: none;
+    }
+}

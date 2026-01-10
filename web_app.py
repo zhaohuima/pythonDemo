@@ -18,10 +18,12 @@ except ImportError:
 from flask import Flask, render_template, request, jsonify, Response
 from flask_cors import CORS
 import json
-from orchestrator import ProductMaster
+from langgraph_orchestrator import LangGraphOrchestrator
+from agents import ProductResearcher, DocAssistant, FeasibilityEvaluator, init_llm
 from datetime import datetime
 import threading
 import queue
+from logger_config import logger
 
 app = Flask(__name__)
 CORS(app)
@@ -32,11 +34,60 @@ execution_queue = queue.Queue()
 
 
 class StreamingOrchestrator:
-    """支持流式输出的编排器包装类"""
+    """支持流式输出的编排器包装类 - 使用 LangGraph"""
+    
+    # LangGraph 节点名称到前端步骤的映射（按新顺序）
+    # New order: researcher -> evaluator -> aggregation -> doc_assistant
+    NODE_MAPPING = {
+        'researcher': {
+            'step': 'research',
+            'display_name': 'Product Research',
+            'icon': '📚',
+            'order': 1
+        },
+        'evaluator': {
+            'step': 'evaluation',
+            'display_name': 'Feasibility Evaluation',
+            'icon': '🔍',
+            'order': 2
+        },
+        'aggregation': {
+            'step': 'summarization',
+            'display_name': 'Result Aggregation',
+            'icon': '🎯',
+            'order': 3
+        },
+        'doc_assistant': {
+            'step': 'documentation',
+            'display_name': 'Documentation Generation',
+            'icon': '📝',
+            'order': 4
+        }
+    }
     
     def __init__(self, execution_id):
         self.execution_id = execution_id
-        self.product_master = ProductMaster()
+        
+        # 初始化 LLM
+        logger.info(f"[{execution_id}] Initializing LLM...")
+        self.llm = init_llm()
+        
+        # 初始化三个 Agent
+        logger.info(f"[{execution_id}] Initializing Agents...")
+        self.researcher = ProductResearcher(self.llm)
+        self.doc_assistant = DocAssistant(self.llm)
+        self.evaluator = FeasibilityEvaluator(self.llm)
+        
+        # 创建 LangGraph 编排器
+        logger.info(f"[{execution_id}] Creating LangGraph Orchestrator...")
+        self.langgraph_orchestrator = LangGraphOrchestrator(
+            self.researcher, 
+            self.doc_assistant, 
+            self.evaluator, 
+            self.llm
+        )
+        logger.info(f"[{execution_id}] LangGraph Orchestrator created successfully")
+        
         self.states = {
             'status': 'idle',
             'current_step': None,
@@ -59,71 +110,109 @@ class StreamingOrchestrator:
         execution_states[self.execution_id] = self.states.copy()
     
     def orchestrate(self, user_input):
-        """执行编排流程，带状态更新"""
+        """执行编排流程，使用 LangGraph 流式执行"""
         try:
-            self.update_state('running', 'initializing', 'Initializing system...')
+            logger.info(f"[{self.execution_id}] Starting LangGraph orchestration")
+            self.update_state('running', 'initializing', 'Initializing LangGraph workflow...')
             
-            # Step 1: Product Researcher
-            self.update_state('running', 'research', 'Executing product research...')
-            research_result = self.product_master.researcher.research(user_input)
-            self.update_state('running', 'research', 'Product research completed')
+            # 使用 LangGraph 流式执行工作流
+            logger.info(f"[{self.execution_id}] Starting stream workflow execution")
             
-            # Step 2: Doc Assistant
-            self.update_state('running', 'documentation', 'Generating product documentation...')
-            doc_result = self.product_master.doc_assistant.generate_doc(
-                user_input, 
-                research_result["research_result"]
-            )
-            self.update_state('running', 'documentation', 'Documentation generation completed')
+            # 流式执行，实时更新状态
+            final_state = None
+            completed_nodes = set()
             
-            # Step 3: Feasibility Evaluation
-            self.update_state('running', 'evaluation', 'Conducting feasibility evaluation...')
-            evaluation_result = self.product_master.evaluator.evaluate(
-                user_input,
-                research_result["research_result"],
-                doc_result["document"]
-            )
-            self.update_state('running', 'evaluation', 'Evaluation completed')
+            # 使用 stream_workflow 执行工作流（只执行一次）
+            for state_update in self.langgraph_orchestrator.stream_workflow(user_input):
+                # LangGraph stream 返回格式: {'node_name': state_dict}
+                if isinstance(state_update, dict):
+                    for key, value in state_update.items():
+                        # 检查是否是已知节点
+                        if key in self.NODE_MAPPING:
+                            node_info = self.NODE_MAPPING[key]
+                            step_name = node_info['step']
+                            display_name = node_info['display_name']
+                            
+                            # 标记节点完成
+                            completed_nodes.add(key)
+                            
+                            # 更新状态 - 节点完成
+                            self.update_state(
+                                'running', 
+                                step_name, 
+                                f'{display_name} completed'
+                            )
+                            logger.info(f"[{self.execution_id}] Node {key} ({step_name}) completed")
+                            
+                            # 保存状态（每次更新都保存，最后一次就是最终状态）
+                            if isinstance(value, dict):
+                                final_state = value
+                        
+                        # 检查是否是完整状态对象
+                        elif isinstance(value, dict) and 'execution_log' in value:
+                            final_state = value
             
-            # Step 4: Summarization
-            self.update_state('running', 'summarization', 'Aggregating results...')
-            summary = self.product_master._summarize_results(
-                user_input,
-                research_result["research_result"],
-                doc_result["document"],
-                evaluation_result["evaluation_result"]
-            )
+            # 检查是否成功获取最终状态
+            if final_state is None:
+                raise Exception("Workflow execution failed: no final state returned")
             
-            # 构建最终结果
-            final_result = {
-                "timestamp": datetime.now().isoformat(),
-                "user_input": user_input,
-                "agents_outputs": {
-                    "product_researcher": research_result,
-                    "doc_assistant": doc_result,
-                    "feasibility_evaluator": evaluation_result
-                },
-                "final_summary": summary,
-                "status": "completed"
-            }
+            logger.info(f"[{self.execution_id}] Stream workflow completed, completed nodes: {completed_nodes}")
+            
+            # 从 final_state 中提取结果并构建最终结果
+            logger.info(f"[{self.execution_id}] Building final result from state")
+            final_result = self._build_final_result(user_input, final_state)
             
             self.states['result'] = final_result
-            self.update_state('completed', 'finished', 'All steps completed')
+            self.update_state('completed', 'finished', 'LangGraph workflow completed successfully')
             
-            # Save results to file
-            output_dir = "outputs"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            filepath = os.path.join(output_dir, f"orchestration_result_{self.execution_id}.json")
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(final_result, f, indent=2, ensure_ascii=False, default=str)
+            # 保存结果到文件
+            self._save_results(final_result)
             
+            logger.info(f"[{self.execution_id}] Orchestration completed successfully")
             return final_result
             
         except Exception as e:
+            logger.error(f"[{self.execution_id}] Orchestration failed: {str(e)}", exc_info=True)
             self.states['error'] = str(e)
-            self.update_state('error', None, f'Execution error: {str(e)}')
+            self.update_state('error', None, f'LangGraph execution error: {str(e)}')
             raise
+    
+    def _build_final_result(self, user_input, final_state):
+        """从 LangGraph 的 final_state 构建前端期望的结果格式"""
+        return {
+            "timestamp": final_state.get("timestamp", datetime.now().isoformat()),
+            "execution_time_seconds": final_state.get("execution_time", 0),
+            "user_input": user_input,
+            "agents_outputs": {
+                "product_researcher": {
+                    "agent": "Product Researcher",
+                    "research_result": final_state.get("research_result", {}),
+                    "status": "completed"
+                },
+                "doc_assistant": {
+                    "agent": "Doc Assistant",
+                    "document": final_state.get("document_content", ""),
+                    "status": "completed"
+                },
+                "feasibility_evaluator": {
+                    "agent": "Feasibility Evaluator",
+                    "evaluation_result": final_state.get("evaluation_result", {}),
+                    "status": "completed"
+                }
+            },
+            "final_summary": final_state.get("final_summary", {}),
+            "status": "completed"
+        }
+    
+    def _save_results(self, final_result):
+        """保存结果到文件"""
+        output_dir = "outputs"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        filepath = os.path.join(output_dir, f"orchestration_result_{self.execution_id}.json")
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(final_result, f, indent=2, ensure_ascii=False, default=str)
+        logger.info(f"[{self.execution_id}] Results saved to: {filepath}")
 
 
 @app.route('/')

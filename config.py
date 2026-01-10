@@ -11,7 +11,9 @@ API_KEY = "***REMOVED***"
 API_BASE_URL = "https://api.siliconflow.cn/v1"
 
 # LLM 模型名称 | LLM Model Name
-MODEL_NAME = "Qwen/Qwen2.5-72B-Instruct"
+# 可选模型: Qwen/Qwen2.5-72B-Instruct, Qwen/Qwen2.5-7B-Instruct, deepseek-ai/DeepSeek-V2.5
+# 如果 72B 模型不可用，可以切换到其他模型
+MODEL_NAME = "deepseek-ai/DeepSeek-V2.5"
 
 # 项目名称 | Project Name
 PROJECT_NAME = "Product Master - Multi-Agent Orchestration System"
