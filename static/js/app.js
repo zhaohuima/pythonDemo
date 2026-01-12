@@ -1,6 +1,20 @@
 // 全局变量
 let currentExecutionId = null;
 let statusCheckInterval = null;
+let eventSource = null;
+
+// 打字机效果状态管理
+const typewriterState = {};
+
+// 进度映射
+const AGENT_PROGRESS = {
+    'initializing': { percent: 5, text: 'Initializing workflow...' },
+    'research': { percent: 25, text: 'Product Researcher analyzing...' },
+    'evaluation': { percent: 50, text: 'Feasibility Evaluator assessing...' },
+    'summarization': { percent: 75, text: 'Aggregating results...' },
+    'documentation': { percent: 90, text: 'Doc Assistant generating...' },
+    'finished': { percent: 100, text: 'Completed!' }
+};
 
 // 开始编排流程
 async function startOrchestration() {
@@ -16,9 +30,13 @@ async function startOrchestration() {
     submitBtn.disabled = true;
     submitBtn.querySelector('.btn-text').textContent = 'Processing...';
     
-    // Show execution section
+    // Show execution section and log section
     document.getElementById('executionSection').style.display = 'block';
-    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('logSection').style.display = 'block';
+
+    // Show results section immediately with loading indicators
+    document.getElementById('resultsSection').style.display = 'block';
+    initializeLoadingStates();
     
     // Reset state
     resetExecutionState();
@@ -41,9 +59,9 @@ async function startOrchestration() {
         if (response.ok) {
             currentExecutionId = data.execution_id;
             addLog('info', 'Orchestration started, Execution ID: ' + currentExecutionId);
-            
-            // Start status polling
-            startStatusPolling();
+
+            // Start SSE connection for streaming updates
+            startSSEConnection();
         } else {
             throw new Error(data.error || 'Failed to start');
         }
@@ -53,6 +71,71 @@ async function startOrchestration() {
         submitBtn.disabled = false;
         submitBtn.querySelector('.btn-text').textContent = 'Start Design';
     }
+}
+
+// 开始SSE连接
+function startSSEConnection() {
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    eventSource = new EventSource(`/api/stream/${currentExecutionId}`);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.error) {
+            addLog('error', 'Error: ' + data.error);
+            eventSource.close();
+            hideLoading();
+            restoreSubmitButton();
+            return;
+        }
+
+        if (data.done) {
+            eventSource.close();
+            hideLoading();
+            restoreSubmitButton();
+            return;
+        }
+
+        // 更新执行状态
+        updateExecutionState(data);
+
+        // 处理流式中间结果（打字机效果）
+        if (data.partial_research) {
+            streamTypewriter('researchResult', data.partial_research);
+        }
+        if (data.partial_evaluation) {
+            streamTypewriter('evaluationResult', data.partial_evaluation);
+        }
+        if (data.partial_summary) {
+            streamTypewriter('summaryResult', data.partial_summary);
+            displaySummary(data.partial_summary);
+        }
+        if (data.partial_documentation) {
+            streamTypewriter('documentationResult', data.partial_documentation);
+        }
+
+        if (data.final_result) {
+            displayDetailedResults(data.final_result);
+        }
+    };
+
+    eventSource.onerror = function(error) {
+        console.error('SSE connection error:', error);
+        eventSource.close();
+        // 降级到轮询模式
+        addLog('info', 'Falling back to polling mode...');
+        startStatusPolling();
+    };
+}
+
+// 恢复提交按钮
+function restoreSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.querySelector('.btn-text').textContent = 'Start Design';
 }
 
 // 开始状态轮询
@@ -95,7 +178,12 @@ function startStatusPolling() {
 // 更新执行状态
 function updateExecutionState(status) {
     const currentStep = status.current_step;
-    
+
+    // 更新进度条
+    if (currentStep) {
+        updateProgress(currentStep);
+    }
+
     // 更新节点状态
     const stepMap = {
         'initializing': null,
@@ -147,7 +235,12 @@ function updateExecutionState(status) {
         const lastStep = steps[steps.length - 1];
         addLog('info', `[${lastStep.step}] ${lastStep.message}`);
     }
-    
+
+    // 显示中间结果（如果有）
+    if (status.partial_results) {
+        displayPartialResults(status.partial_results);
+    }
+
     // 如果完成，标记所有节点
     if (status.status === 'completed') {
         document.querySelectorAll('.graph-node').forEach(node => {
@@ -391,6 +484,60 @@ function renderMarkdown(markdownText, element) {
     }
 }
 
+// 初始化加载状态
+function initializeLoadingStates() {
+    document.getElementById('researchResult').innerHTML = '<p class="loading-indicator">⏳ 正在生成产品研究报告...</p>';
+    document.getElementById('evaluationResult').innerHTML = '<p class="loading-indicator">⏳ 正在进行可行性评估...</p>';
+    document.getElementById('summaryResult').innerHTML = '<p class="loading-indicator">⏳ 正在生成最终总结...</p>';
+    document.getElementById('documentationResult').innerHTML = '<p class="loading-indicator">⏳ 正在生成产品文档...</p>';
+}
+
+// 显示中间结果（流式输出）
+function displayPartialResults(partialResults) {
+    if (!partialResults) return;
+
+    // 显示 Results Section（如果还未显示）
+    if (Object.keys(partialResults).some(key => partialResults[key])) {
+        document.getElementById('resultsSection').style.display = 'block';
+    }
+
+    // 如果有研究结果，显示到 research tab
+    if (partialResults.research) {
+        const researchEl = document.getElementById('researchResult');
+        renderMarkdown(jsonToMarkdown(partialResults.research), researchEl);
+    }
+
+    // 如果有评估结果，显示到 evaluation tab
+    if (partialResults.evaluation) {
+        const evalEl = document.getElementById('evaluationResult');
+        renderMarkdown(jsonToMarkdown(partialResults.evaluation), evalEl);
+    }
+
+    // 如果有汇总结果，显示到 summary tab 和 summary card
+    if (partialResults.summary) {
+        displaySummary(partialResults.summary);
+        const summaryEl = document.getElementById('summaryResult');
+        renderMarkdown(jsonToMarkdown(partialResults.summary), summaryEl);
+    }
+
+    // 如果有文档结果，显示到 documentation tab
+    if (partialResults.documentation) {
+        const docEl = document.getElementById('documentationResult');
+        renderMarkdown(partialResults.documentation, docEl);
+    }
+
+    // 自动切换到最新可用的 tab
+    if (partialResults.documentation) {
+        showTab('documentation');
+    } else if (partialResults.summary) {
+        showTab('summary');
+    } else if (partialResults.evaluation) {
+        showTab('evaluation');
+    } else if (partialResults.research) {
+        showTab('research');
+    }
+}
+
 // 显示详细结果
 function displayDetailedResults(result) {
     // 产品研究结果
@@ -479,15 +626,26 @@ function resetExecutionState() {
     document.querySelectorAll('.graph-node').forEach(node => {
         node.classList.remove('active', 'completed', 'error');
     });
-    
+
     document.getElementById('executionLog').innerHTML = '';
-    
+
     // Reset status text (new order: research -> evaluation -> summarization -> documentation)
     ['research', 'evaluation', 'summarization', 'documentation'].forEach(step => {
         const statusEl = document.getElementById(`status-${step}`);
         if (statusEl) {
             statusEl.textContent = 'Waiting';
         }
+    });
+
+    // 重置打字机状态
+    Object.keys(typewriterState).forEach(key => {
+        typewriterState[key] = { displayedLength: 0, fullContent: '', isTyping: false };
+    });
+
+    // 清空结果区域
+    ['researchResult', 'evaluationResult', 'summaryResult', 'documentationResult'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
     });
 }
 
@@ -503,11 +661,152 @@ function addLog(type, message) {
 
 // 显示/隐藏加载动画
 function showLoading() {
-    document.getElementById('loadingOverlay').style.display = 'flex';
+    showProgress();
+    // 不再显示全屏遮罩
+    // document.getElementById('loadingOverlay').style.display = 'flex';
 }
 
 function hideLoading() {
-    document.getElementById('loadingOverlay').style.display = 'none';
+    hideProgress();
+    // document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// #region agent log - Hypothesis A: Both progressBar and floatingStatus are displayed together
+// 进度条控制 - 只显示右侧底部状态条
+function showProgress() {
+    const progressBar = document.getElementById('progressBar');
+    const floatingStatus = document.getElementById('floatingStatus');
+    console.log('[DEBUG] showProgress called:', { progressBar: progressBar, floatingStatus: floatingStatus });
+    fetch('http://127.0.0.1:7242/ingest/0e3ade31-f317-42f9-b791-2c3a162c0607',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:675',message:'showProgress function called',data:{progressBarExists:!!progressBar,floatingStatusExists:!!floatingStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+    // 只显示右侧底部的状态条，隐藏顶部进度条
+    // if (progressBar) progressBar.style.display = 'block';
+    if (floatingStatus) floatingStatus.style.display = 'flex';
+    fetch('http://127.0.0.1:7242/ingest/0e3ade31-f317-42f9-b791-2c3a162c0607',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:678',message:'Post-fix: Only floatingStatus displayed above results',data:{progressBarHidden:true,floatingStatusVisible:true,positionChanged:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+    updateProgress('initializing');
+}
+// #endregion
+
+// #region agent log - Hypothesis B: hideProgress hides both elements
+function hideProgress() {
+    console.log('[DEBUG] hideProgress called');
+    fetch('http://127.0.0.1:7242/ingest/0e3ade31-f317-42f9-b791-2c3a162c0607',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:690',message:'hideProgress function called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+    updateProgress('finished');
+    setTimeout(() => {
+        const progressBar = document.getElementById('progressBar');
+        const floatingStatus = document.getElementById('floatingStatus');
+        // 只隐藏右侧底部的状态条，保持顶部进度条隐藏
+        // if (progressBar) progressBar.style.display = 'none';
+        if (floatingStatus) floatingStatus.style.display = 'none';
+        const progressFill = document.querySelector('.progress-bar-fill');
+        if (progressFill) progressFill.style.width = '0%';
+    }, 1000);
+}
+// #endregion
+
+// #region agent log - Hypothesis C: progress-bar-text element also shows status
+function updateProgress(step) {
+    const progress = AGENT_PROGRESS[step] || AGENT_PROGRESS['initializing'];
+    const progressFill = document.querySelector('.progress-bar-fill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressAgent = document.getElementById('progressAgent');
+    const statusText = document.getElementById('statusText');
+
+    console.log('[DEBUG] updateProgress called:', step, progress);
+    fetch('http://127.0.0.1:7242/ingest/0e3ade31-f317-42f9-b791-2c3a162c0607',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:707',message:'updateProgress called',data:{step:step,progress:progress},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+
+    if (progressFill) progressFill.style.width = progress.percent + '%';
+    if (progressPercent) progressPercent.textContent = progress.percent + '%';
+    if (progressAgent) progressAgent.textContent = progress.text;
+    if (statusText) statusText.textContent = progress.text;
+}
+// #endregion
+
+// 打字机效果
+function streamTypewriter(elementId, content) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    // 显示结果区域
+    document.getElementById('resultsSection').style.display = 'block';
+
+    // 初始化或获取状态
+    if (!typewriterState[elementId]) {
+        typewriterState[elementId] = {
+            displayedLength: 0,
+            fullContent: '',
+            isTyping: false
+        };
+    }
+
+    const state = typewriterState[elementId];
+
+    // 处理内容：如果是对象，转换为Markdown
+    let textContent;
+    if (typeof content === 'object') {
+        textContent = jsonToMarkdown(content);
+    } else {
+        textContent = String(content);
+    }
+
+    // 更新完整内容
+    state.fullContent = textContent;
+
+    // 如果已经在打字，让现有动画继续
+    if (state.isTyping) return;
+
+    // 开始打字机效果
+    state.isTyping = true;
+    typeNextChunk(elementId, element, state);
+}
+
+function typeNextChunk(elementId, element, state) {
+    const chunkSize = 10; // 每次显示10个字符
+    const delay = 20;     // 20ms间隔
+
+    if (state.displayedLength < state.fullContent.length) {
+        // 计算下一个chunk
+        const nextLength = Math.min(
+            state.displayedLength + chunkSize,
+            state.fullContent.length
+        );
+
+        const displayText = state.fullContent.substring(0, nextLength);
+        state.displayedLength = nextLength;
+
+        // 渲染Markdown（带光标效果）
+        renderMarkdownWithCursor(displayText, element, state.displayedLength < state.fullContent.length);
+
+        // 继续下一个chunk
+        setTimeout(() => typeNextChunk(elementId, element, state), delay);
+    } else {
+        // 打字完成
+        state.isTyping = false;
+        // 最终渲染（无光标）
+        renderMarkdown(state.fullContent, element);
+    }
+}
+
+function renderMarkdownWithCursor(text, element, showCursor) {
+    // 清理并渲染Markdown
+    let cleaned = cleanMarkdown(text);
+
+    if (typeof marked !== 'undefined') {
+        try {
+            let html = marked.parse(cleaned);
+            // 添加闪烁光标
+            if (showCursor) {
+                html += '<span class="typing-cursor">|</span>';
+            }
+            element.innerHTML = html;
+        } catch (error) {
+            element.innerHTML = '<pre>' + cleaned + '</pre>';
+        }
+    } else {
+        element.innerHTML = '<pre>' + cleaned + (showCursor ? '<span class="typing-cursor">|</span>' : '') + '</pre>';
+    }
+
+    // 自动滚动到底部
+    element.scrollTop = element.scrollHeight;
 }
 
 // 页面加载完成后的初始化

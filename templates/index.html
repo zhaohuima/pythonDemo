@@ -8,6 +8,15 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
+    <!-- 顶部进度条 -->
+    <div class="progress-bar-container" id="progressBar" style="display: none;">
+        <div class="progress-bar-fill"></div>
+        <div class="progress-bar-text">
+            <span id="progressAgent">Initializing...</span>
+            <span id="progressPercent">0%</span>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -43,7 +52,7 @@
                         <div class="node-label">Start</div>
                     </div>
                     
-                    <div class="graph-arrow">↓</div>
+                    <div class="graph-arrow">→</div>
                     
                     <div class="graph-node" id="node-research">
                         <div class="node-icon">📚</div>
@@ -51,7 +60,7 @@
                         <div class="node-status" id="status-research">Waiting</div>
                     </div>
                     
-                    <div class="graph-arrow">↓</div>
+                    <div class="graph-arrow">→</div>
                     
                     <div class="graph-node" id="node-evaluation">
                         <div class="node-icon">🔍</div>
@@ -59,7 +68,7 @@
                         <div class="node-status" id="status-evaluation">Waiting</div>
                     </div>
                     
-                    <div class="graph-arrow">↓</div>
+                    <div class="graph-arrow">→</div>
                     
                     <div class="graph-node" id="node-summarization">
                         <div class="node-icon">🎯</div>
@@ -67,7 +76,7 @@
                         <div class="node-status" id="status-summarization">Waiting</div>
                     </div>
                     
-                    <div class="graph-arrow">↓</div>
+                    <div class="graph-arrow">→</div>
                     
                     <div class="graph-node" id="node-documentation">
                         <div class="node-icon">📝</div>
@@ -75,7 +84,7 @@
                         <div class="node-status" id="status-documentation">Waiting</div>
                     </div>
                     
-                    <div class="graph-arrow">↓</div>
+                    <div class="graph-arrow">→</div>
                     
                     <div class="graph-node end-node" id="node-finished">
                         <div class="node-icon">✅</div>
@@ -84,14 +93,13 @@
                 </div>
             </div>
 
-            <!-- Execution Log -->
-            <div class="log-container">
-                <h3>Execution Log</h3>
-                <div class="log-content" id="executionLog">
-                    <div class="log-entry">Waiting for execution to start...</div>
-                </div>
-            </div>
         </section>
+
+        <!-- 浮动状态指示器 - 现在位于Execution Results上方 -->
+        <div class="floating-status" id="floatingStatus" style="display: none;">
+            <div class="status-spinner"></div>
+            <span id="statusText">Processing...</span>
+        </div>
 
         <!-- Results Section -->
         <section class="results-section" id="resultsSection" style="display: none;">
@@ -128,6 +136,16 @@
                 </div>
                 <div id="tab-documentation" class="tab-pane">
                     <div class="result-content" id="documentationResult"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Execution Log Section -->
+        <section class="log-section" id="logSection" style="display: none;">
+            <h2>📋 Execution Log</h2>
+            <div class="log-container">
+                <div class="log-content" id="executionLog">
+                    <div class="log-entry">Waiting for execution to start...</div>
                 </div>
             </div>
         </section>
