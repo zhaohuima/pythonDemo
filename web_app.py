@@ -18,6 +18,7 @@ except ImportError:
 from flask import Flask, render_template, request, jsonify, Response
 from flask_cors import CORS
 import json
+import time
 from langgraph_orchestrator import LangGraphOrchestrator
 from agents import ProductResearcher, DocAssistant, FeasibilityEvaluator, init_llm
 from datetime import datetime
@@ -93,7 +94,13 @@ class StreamingOrchestrator:
             'current_step': None,
             'steps': [],
             'result': None,
-            'error': None
+            'error': None,
+            'partial_results': {
+                'research': None,
+                'evaluation': None,
+                'summary': None,
+                'documentation': None
+            }
         }
     
     def update_state(self, status, step=None, message=None):
@@ -132,22 +139,32 @@ class StreamingOrchestrator:
                             node_info = self.NODE_MAPPING[key]
                             step_name = node_info['step']
                             display_name = node_info['display_name']
-                            
+
                             # 标记节点完成
                             completed_nodes.add(key)
-                            
+
+                            # 捕获中间结果并保存到 partial_results
+                            if key == 'researcher' and isinstance(value, dict):
+                                self.states['partial_results']['research'] = value.get('research_result')
+                            elif key == 'evaluator' and isinstance(value, dict):
+                                self.states['partial_results']['evaluation'] = value.get('evaluation_result')
+                            elif key == 'aggregation' and isinstance(value, dict):
+                                self.states['partial_results']['summary'] = value.get('final_summary')
+                            elif key == 'doc_assistant' and isinstance(value, dict):
+                                self.states['partial_results']['documentation'] = value.get('document_content')
+
                             # 更新状态 - 节点完成
                             self.update_state(
-                                'running', 
-                                step_name, 
+                                'running',
+                                step_name,
                                 f'{display_name} completed'
                             )
                             logger.info(f"[{self.execution_id}] Node {key} ({step_name}) completed")
-                            
+
                             # 保存状态（每次更新都保存，最后一次就是最终状态）
                             if isinstance(value, dict):
                                 final_state = value
-                        
+
                         # 检查是否是完整状态对象
                         elif isinstance(value, dict) and 'execution_log' in value:
                             final_state = value
@@ -274,7 +291,7 @@ def get_result(execution_id):
     """获取执行结果的API端点"""
     if execution_id not in execution_states:
         return jsonify({'error': 'Execution ID not found'}), 404
-    
+
     state = execution_states[execution_id]
     if state['status'] == 'completed' and state.get('result'):
         return jsonify(state['result'])
@@ -282,6 +299,55 @@ def get_result(execution_id):
         return jsonify({'error': state.get('error', 'Unknown error')}), 500
     else:
         return jsonify({'message': 'Execution not completed yet'}), 202
+
+
+@app.route('/api/stream/<execution_id>')
+def stream_status(execution_id):
+    """SSE流式状态推送端点"""
+    def generate():
+        last_partial_results = {}
+
+        while True:
+            if execution_id not in execution_states:
+                yield f"data: {json.dumps({'error': 'Execution ID not found'})}\n\n"
+                break
+
+            state = execution_states[execution_id]
+            current_partial = state.get('partial_results', {})
+
+            # 构建更新数据
+            update = {
+                'status': state['status'],
+                'current_step': state.get('current_step'),
+                'steps': state.get('steps', [])
+            }
+
+            # 检查每个agent的结果是否有更新
+            for key in ['research', 'evaluation', 'summary', 'documentation']:
+                if current_partial.get(key) and current_partial.get(key) != last_partial_results.get(key):
+                    update[f'partial_{key}'] = current_partial[key]
+                    last_partial_results[key] = current_partial[key]
+
+            yield f"data: {json.dumps(update, ensure_ascii=False, default=str)}\n\n"
+
+            # 完成或出错时结束
+            if state['status'] in ['completed', 'error']:
+                if state['status'] == 'completed' and state.get('result'):
+                    yield f"data: {json.dumps({'final_result': state['result']}, ensure_ascii=False, default=str)}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                break
+
+            time.sleep(0.5)  # 500ms检查间隔
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
+        }
+    )
 
 
 if __name__ == '__main__':
