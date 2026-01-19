@@ -1,0 +1,13 @@
+# Docker 环境额外依赖
+# Additional dependencies for Docker environment
+
+# Web 服务器
+gunicorn>=21.2.0
+
+# RAG 相关依赖
+sentence-transformers>=2.2.0
+chromadb>=0.4.0
+pypdf>=3.17.0
+
+# SSL 证书支持（macOS 兼容）
+certifi>=2023.7.22

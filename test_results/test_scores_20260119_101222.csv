@@ -1,0 +1,5 @@
+Test ID,Test Name,Category,Dim A (User Req),Dim B (Target Users),Dim C (Market Analysis),Dim D (Market Insights),Total Score,Percentage,Status
+2.1,Internal Knowledge Management System,Enterprise Internal Software,7,7,10,7,31,77.5%,Pass
+3.1,Smart Home Security Camera,Hardware Product,7,7,7,4,25,62.5%,Fail
+4.1,Design Collaboration Tool,Software Tools (SaaS),7,7,10,7,31,77.5%,Pass
+5.1,Language Learning App,Consumer Mobile App,7,7,10,7,31,77.5%,Pass

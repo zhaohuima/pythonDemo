@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案一：海洋蓝渐变 (Ocean Blue Gradient)</title>
+    <style>
+        /* ========================================
+           方案一：海洋蓝渐变 (Ocean Blue Gradient)
+           ======================================== */
+
+        /* 色彩变量 - 海洋蓝渐变（加深版） */
+        :root {
+            --bg-light: #bae6fd;
+            --bg-mid: #38bdf8;
+            --bg-dark: #0c4a6e;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-card-dark: rgba(3, 105, 161, 0.95);
+            --accent-cyan: #0284c7;
+            --accent-purple: #0369a1;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-primary: #1e293b;
+            --text-primary-light: #ffffff;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-glow: rgba(2, 132, 199, 0.4);
+            --border-subtle: rgba(0, 0, 0, 0.1);
+            --border-subtle-dark: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(180deg, var(--bg-light) 0%, var(--bg-mid) 30%, var(--bg-dark) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+
+        /* 网格背景效果 - 蓝色系 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(2, 132, 199, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.15),
+                0 0 40px rgba(2, 132, 199, 0.15);
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Demo 标签 */
+        .demo-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+        }
+
+        /* ========== Header ========== */
+        .header {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(3, 105, 161, 0.15) 100%);
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+        }
+
+        /* ========== Input Section ========== */
+        .input-section {
+            padding: 40px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .input-section h2 {
+            margin-bottom: 20px;
+            color: var(--accent-cyan);
+            font-size: 1.5em;
+        }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .textarea-wrapper {
+            position: relative;
+        }
+
+        .char-counter {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 12px;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        #userInput {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s;
+            color: var(--text-primary);
+            min-height: 150px;
+        }
+
+        #userInput::placeholder {
+            color: var(--text-muted);
+        }
+
+        #userInput:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(2, 132, 199, 0.2);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            align-self: flex-start;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(2, 132, 199, 0.5);
+        }
+
+        /* ========== Execution Section ========== */
+        .execution-section {
+            padding: 40px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .execution-section h2 {
+            margin-bottom: 30px;
+            color: var(--accent-cyan);
+            font-size: 1.5em;
+        }
+
+        .graph-container {
+            background: rgba(2, 132, 199, 0.08);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .graph {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 0;
+            flex-wrap: nowrap;
+        }
+
+        .graph-node {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 8px 10px;
+            min-width: 75px;
+            max-width: 85px;
+            text-align: center;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .graph-node.active {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
+            background: rgba(2, 132, 199, 0.1);
+        }
+
+        .graph-node.completed {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .node-icon {
+            font-size: 1.2em;
+            margin-bottom: 4px;
+        }
+
+        .node-label {
+            font-weight: 600;
+            font-size: 0.65em;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .node-status {
+            font-size: 0.6em;
+            color: var(--text-secondary);
+        }
+
+        .graph-arrow {
+            font-size: 1em;
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        .start-node, .end-node {
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            border: none;
+            min-width: 60px;
+            max-width: 70px;
+        }
+
+        .start-node .node-label,
+        .end-node .node-label {
+            color: white;
+        }
+
+        /* ========== Results Section ========== */
+        .results-section {
+            padding: 40px;
+        }
+
+        .results-section h2 {
+            margin-bottom: 30px;
+            color: var(--accent-cyan);
+            font-size: 1.5em;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(3, 105, 161, 0.1) 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .summary-card h3 {
+            margin-bottom: 20px;
+            color: var(--accent-cyan);
+        }
+
+        .summary-item {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+        }
+
+        .summary-value {
+            font-size: 1.6em;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        /* ========== Tabs ========== */
+        .results-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 15px 25px;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .tab-btn:hover {
+            color: var(--accent-cyan);
+            background: rgba(2, 132, 199, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+        }
+
+        .tab-content {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            min-height: 100px;
+        }
+
+        /* 开发者信息样式 */
+        .developer-credit {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .graph {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .graph-node {
+                min-width: 150px;
+                max-width: none;
+            }
+
+            .graph-arrow {
+                transform: rotate(90deg);
+            }
+
+            .results-tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-badge">方案一：海洋蓝渐变</div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Product Master</h1>
+            <p class="subtitle">A Multi-Agent System to Provide Product Design Ideas</p>
+        </header>
+
+        <!-- User Input Section -->
+        <section class="input-section">
+            <h2>Product Requirements Input</h2>
+            <div class="input-container">
+                <div class="textarea-wrapper">
+                    <textarea
+                        id="userInput"
+                        placeholder="Enter your product requirements...&#10;Example:&#10;We want to develop a supply chain management system for e-commerce enterprises."
+                        rows="6"
+                    ></textarea>
+                    <span class="char-counter">0 / 5000</span>
+                </div>
+                <button class="submit-btn">
+                    <span class="btn-text">Start Design</span>
+                    <span class="btn-icon">▶</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Execution Process Section -->
+        <section class="execution-section">
+            <h2>Execution Process</h2>
+
+            <div class="graph-container">
+                <div class="graph">
+                    <div class="graph-node start-node">
+                        <div class="node-icon">🚀</div>
+                        <div class="node-label">Start</div>
+                    </div>
+
+                    <div class="graph-arrow">→</div>
+
+                    <div class="graph-node completed">
+                        <div class="node-icon">📚</div>
+                        <div class="node-label">Product Researcher</div>
+                        <div class="node-status">Completed</div>
+                    </div>
+
+                    <div class="graph-arrow">→</div>
+
+                    <div class="graph-node active">
+                        <div class="node-icon">🔍</div>
+                        <div class="node-label">Feasibility Evaluator</div>
+                        <div class="node-status">Running</div>
+                    </div>
+
+                    <div class="graph-arrow">→</div>
+
+                    <div class="graph-node">
+                        <div class="node-icon">🎯</div>
+                        <div class="node-label">Result Aggregation</div>
+                        <div class="node-status">Waiting</div>
+                    </div>
+
+                    <div class="graph-arrow">→</div>
+
+                    <div class="graph-node">
+                        <div class="node-icon">📝</div>
+                        <div class="node-label">Doc Assistant</div>
+                        <div class="node-status">Waiting</div>
+                    </div>
+
+                    <div class="graph-arrow">→</div>
+
+                    <div class="graph-node end-node">
+                        <div class="node-icon">✅</div>
+                        <div class="node-label">Complete</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section">
+            <h2>Execution Results</h2>
+
+            <div class="summary-card">
+                <h3>🎯 Final Summary</h3>
+                <div class="summary-item">
+                    <span class="summary-label">Feasibility Score:</span>
+                    <span class="summary-value">85%</span>
+                </div>
+            </div>
+
+            <div class="results-tabs">
+                <button class="tab-btn active">📚 Product Research</button>
+                <button class="tab-btn">🔍 Feasibility Evaluation</button>
+                <button class="tab-btn">🎯 Final Summary</button>
+                <button class="tab-btn">📝 Product Documentation</button>
+            </div>
+
+            <div class="tab-content">
+                <p style="color: var(--text-muted);">Demo content area - Results will be displayed here...</p>
+            </div>
+        </section>
+
+        <div class="developer-credit">A tool developed by Zhaohui Ma</div>
+    </div>
+</body>
+</html>

@@ -16,6 +16,23 @@ const AGENT_PROGRESS = {
     'finished': { percent: 100, text: 'Completed!' }
 };
 
+// 字符计数器
+function updateCharCount() {
+    const textarea = document.getElementById('userInput');
+    const counter = document.getElementById('charCounter');
+    if (!textarea || !counter) return;
+
+    const count = textarea.value.length;
+    const max = textarea.maxLength || 5000;
+    counter.textContent = `${count} / ${max}`;
+
+    if (count > max * 0.9) {
+        counter.classList.add('warning');
+    } else {
+        counter.classList.remove('warning');
+    }
+}
+
 // 开始编排流程
 async function startOrchestration() {
     const userInput = document.getElementById('userInput').value.trim();
@@ -107,7 +124,24 @@ function startSSEConnection() {
             streamTypewriter('researchResult', data.partial_research);
         }
         if (data.partial_evaluation) {
-            streamTypewriter('evaluationResult', data.partial_evaluation);
+            // 特殊处理 evaluation，需要正确显示 citations
+            const evalResult = data.partial_evaluation;
+            if (typeof evalResult === 'object' && evalResult.citations && evalResult.citations.length > 0) {
+                // 有 citations，使用专门的处理方式
+                const evalEl = document.getElementById('evaluationResult');
+                const citations = evalResult.citations;
+                const evalWithoutCitations = { ...evalResult };
+                delete evalWithoutCitations.citations;
+
+                // 渲染评估结果（不含 citations）
+                renderMarkdown(jsonToMarkdown(evalWithoutCitations), evalEl);
+
+                // 追加格式化的 citations
+                evalEl.innerHTML += formatCitations(citations);
+            } else {
+                // 没有 citations，使用普通的打字机效果
+                streamTypewriter('evaluationResult', evalResult);
+            }
         }
         if (data.partial_summary) {
             streamTypewriter('summaryResult', data.partial_summary);
@@ -507,10 +541,29 @@ function displayPartialResults(partialResults) {
         renderMarkdown(jsonToMarkdown(partialResults.research), researchEl);
     }
 
-    // 如果有评估结果，显示到 evaluation tab
+    // 如果有评估结果，显示到 evaluation tab（包含引用处理）
     if (partialResults.evaluation) {
         const evalEl = document.getElementById('evaluationResult');
-        renderMarkdown(jsonToMarkdown(partialResults.evaluation), evalEl);
+        const evalResult = partialResults.evaluation;
+
+        if (typeof evalResult === 'object') {
+            // 提取引用信息
+            const citations = evalResult.citations || [];
+
+            // 创建不包含citations的评估结果副本
+            const evalWithoutCitations = { ...evalResult };
+            delete evalWithoutCitations.citations;
+
+            // 渲染评估结果
+            renderMarkdown(jsonToMarkdown(evalWithoutCitations), evalEl);
+
+            // 如果有引用，追加引用部分
+            if (citations.length > 0) {
+                evalEl.innerHTML += formatCitations(citations);
+            }
+        } else {
+            renderMarkdown(jsonToMarkdown(evalResult), evalEl);
+        }
     }
 
     // 如果有汇总结果，显示到 summary tab 和 summary card
@@ -552,7 +605,7 @@ function displayDetailedResults(result) {
             renderMarkdown(research, researchEl);
         }
     }
-    
+
     // 文档结果 - 确保完整显示
     if (result.agents_outputs && result.agents_outputs.doc_assistant) {
         const doc = result.agents_outputs.doc_assistant.document;
@@ -560,21 +613,48 @@ function displayDetailedResults(result) {
         // 清理并渲染Markdown，确保完整显示
         renderMarkdown(doc, docEl);
     }
-    
-    // 评估结果 - 以Markdown形式显示
+
+    // 评估结果 - 以Markdown形式显示，包含引用
     if (result.agents_outputs && result.agents_outputs.feasibility_evaluator) {
         const evalResult = result.agents_outputs.feasibility_evaluator.evaluation_result;
         const evalEl = document.getElementById('evaluationResult');
+
+        let evalContent = '';
         if (typeof evalResult === 'object') {
+            // 提取引用信息
+            const citations = evalResult.citations || [];
+
+            // 创建不包含citations的评估结果副本
+            const evalWithoutCitations = { ...evalResult };
+            delete evalWithoutCitations.citations;
+
             // 将JSON对象转换为Markdown格式
-            const markdown = jsonToMarkdown(evalResult);
-            renderMarkdown(markdown, evalEl);
+            evalContent = jsonToMarkdown(evalWithoutCitations);
+
+            // 添加引用部分
+            if (citations.length > 0) {
+                evalContent += '\n\n' + formatCitations(citations);
+            }
         } else {
-            // 如果已经是文本，直接渲染
+            evalContent = evalResult;
+        }
+
+        // 渲染评估结果
+        if (typeof evalResult === 'object') {
+            const evalWithoutCitations = { ...evalResult };
+            delete evalWithoutCitations.citations;
+            renderMarkdown(jsonToMarkdown(evalWithoutCitations), evalEl);
+
+            // 如果有引用，追加引用部分
+            const citations = evalResult.citations || [];
+            if (citations.length > 0) {
+                evalEl.innerHTML += formatCitations(citations);
+            }
+        } else {
             renderMarkdown(evalResult, evalEl);
         }
     }
-    
+
     // 最终汇总 - 以Markdown形式显示
     if (result.final_summary) {
         const summaryEl = document.getElementById('summaryResult');
@@ -813,4 +893,211 @@ function renderMarkdownWithCursor(text, element, showCursor) {
 document.addEventListener('DOMContentLoaded', function() {
     // 可以在这里添加初始化代码
     console.log('Product Master Web Interface Loaded');
+
+    // Initialize RAG/Knowledge Base status
+    loadRAGStatus();
+
+    // Setup file upload handler
+    const pdfUpload = document.getElementById('pdfUpload');
+    if (pdfUpload) {
+        pdfUpload.addEventListener('change', handleFileUpload);
+    }
 });
+
+// ============================================================================
+// RAG / Knowledge Base Management Functions
+// ============================================================================
+
+// Load RAG status and document list
+async function loadRAGStatus() {
+    const statusEl = document.getElementById('ragStatus');
+    const chunksEl = document.getElementById('ragChunks');
+    const docsListEl = document.getElementById('documentsList');
+
+    if (!statusEl) return;
+
+    statusEl.textContent = 'Checking...';
+    statusEl.className = 'kb-status-value loading';
+
+    try {
+        const response = await fetch('/api/rag/status');
+        const data = await response.json();
+
+        if (data.enabled) {
+            statusEl.textContent = 'Enabled';
+            statusEl.className = 'kb-status-value enabled';
+            chunksEl.textContent = `${data.chunks_in_vector_store} chunks indexed`;
+
+            // Display document list
+            displayDocumentList(data.documents || []);
+        } else {
+            statusEl.textContent = 'Disabled';
+            statusEl.className = 'kb-status-value disabled';
+            chunksEl.textContent = '';
+            docsListEl.innerHTML = '<div class="kb-empty">RAG is not enabled</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load RAG status:', error);
+        statusEl.textContent = 'Error';
+        statusEl.className = 'kb-status-value disabled';
+    }
+}
+
+// Display document list
+function displayDocumentList(documents) {
+    const docsListEl = document.getElementById('documentsList');
+    if (!docsListEl) return;
+
+    if (documents.length === 0) {
+        docsListEl.innerHTML = '<div class="kb-empty">No documents uploaded. Upload PDF files to enable RAG.</div>';
+        return;
+    }
+
+    let html = '';
+    documents.forEach(doc => {
+        html += `
+            <div class="kb-document-item">
+                <div class="kb-document-info">
+                    <span class="kb-document-icon">📄</span>
+                    <span class="kb-document-name">${doc.filename}</span>
+                    <span class="kb-document-size">${doc.size_mb} MB</span>
+                </div>
+                <button class="kb-document-delete" onclick="deleteDocument('${doc.filename}')">🗑️ Delete</button>
+            </div>
+        `;
+    });
+
+    docsListEl.innerHTML = html;
+}
+
+// Handle file upload
+async function handleFileUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+    }
+
+    const statusEl = document.getElementById('ragStatus');
+    statusEl.textContent = 'Uploading...';
+    statusEl.className = 'kb-status-value loading';
+
+    try {
+        const response = await fetch('/api/documents/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.uploaded && data.uploaded.length > 0) {
+            alert(`Uploaded ${data.uploaded.length} file(s) successfully!\n\nClick "Reindex" to index the new documents.`);
+        }
+
+        if (data.errors && data.errors.length > 0) {
+            alert('Some files failed to upload:\n' + data.errors.join('\n'));
+        }
+
+        // Refresh status
+        loadRAGStatus();
+
+    } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Upload failed: ' + error.message);
+        loadRAGStatus();
+    }
+
+    // Clear file input
+    event.target.value = '';
+}
+
+// Delete a document
+async function deleteDocument(filename) {
+    if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/documents/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message || 'Document deleted successfully');
+            loadRAGStatus();
+        } else {
+            alert('Failed to delete: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Delete failed:', error);
+        alert('Delete failed: ' + error.message);
+    }
+}
+
+// Reindex all documents
+async function reindexDocuments() {
+    const reindexBtn = document.querySelector('.reindex-btn');
+    if (reindexBtn) {
+        reindexBtn.disabled = true;
+        reindexBtn.textContent = '🔄 Indexing...';
+    }
+
+    const statusEl = document.getElementById('ragStatus');
+    statusEl.textContent = 'Indexing...';
+    statusEl.className = 'kb-status-value loading';
+
+    try {
+        const response = await fetch('/api/documents/reindex', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`Indexing completed!\n\nDocuments: ${data.documents_processed}\nChunks created: ${data.chunks_created}`);
+        } else if (data.status === 'warning') {
+            alert(data.message || 'No documents to index');
+        } else {
+            alert('Indexing failed: ' + (data.message || 'Unknown error'));
+        }
+
+        loadRAGStatus();
+
+    } catch (error) {
+        console.error('Reindex failed:', error);
+        alert('Reindex failed: ' + error.message);
+        loadRAGStatus();
+    } finally {
+        if (reindexBtn) {
+            reindexBtn.disabled = false;
+            reindexBtn.textContent = '🔄 Reindex';
+        }
+    }
+}
+
+// Format citations for display
+function formatCitations(citations) {
+    if (!citations || citations.length === 0) return '';
+
+    let html = '<div class="citations-section"><h4>📚 References</h4>';
+
+    citations.forEach(citation => {
+        html += `
+            <div class="citation-item">
+                <span class="citation-number">${citation.id}</span>
+                <div class="citation-details">
+                    <div class="citation-document">${citation.document}</div>
+                    <div class="citation-section">${citation.section}</div>
+                    <div class="citation-page">Page ${citation.page}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    return html;
+}

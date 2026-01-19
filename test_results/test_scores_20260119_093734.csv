@@ -1,0 +1,5 @@
+Test ID,Test Name,Category,Dim A (User Req),Dim B (Target Users),Dim C (Market Analysis),Dim D (Market Insights),Total Score,Percentage,Status
+1.2,AI Sales Qualification Agent,AI Agent,7,10,7,7,31,77.5%,Pass
+1.3,AI Code Review Agent,AI Agent,10,7,10,7,34,85.0%,Pass
+1.4,AI Personal Finance Agent,AI Agent,7,7,10,7,31,77.5%,Pass
+1.5,AI Recruiting Agent,AI Agent,7,7,10,7,31,77.5%,Pass

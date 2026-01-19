@@ -460,25 +460,90 @@ class ProductResearcher:
                 
                 # 构建任务描述
                 task = f"""
-You are an experienced product researcher. The user has provided the following product requirements:
+You are an experienced product researcher conducting deep market and user research.
 
+User Requirement:
 {user_input}
 
-Please conduct comprehensive research:
-1. Use the analyze_requirements tool to analyze core requirements
-2. Use the market_analysis tool to conduct market analysis
-3. Use the target_users tool to identify target users
-4. Use the market_insights tool to extract insights
+═══════════════════════════════════════════════════════════════
+SCORING CRITERIA (Your response will be evaluated on 4 dimensions, 10 points each):
+═══════════════════════════════════════════════════════════════
 
-After gathering information, synthesize the results into a comprehensive research report.
+Dimension A - User Requirements (10 points):
+• 10 points: Identifies explicit AND implicit requirements, understands business problem, distinguishes must-have vs nice-to-have, considers strategic context
+• 7 points: Identifies most requirements, good understanding, minor gaps in implicit needs
+• 4 points: Surface-level needs only, partial understanding, misses implicit requirements
+• 1 point: Fails to identify needs, misinterprets problem
 
-Return the final results in JSON format with these fields (all in English):
-- core_requirements: Core requirement analysis
-- market_analysis: Market analysis
-- target_users: Target users description  
-- market_insights: Market insights
+Dimension B - Target Users (10 points):
+• 10 points: Specific company size (employee count, revenue), detailed personas (job titles), 3+ unmet needs with evidence, pain point severity/frequency
+• 7 points: Main segments with detail, 2 unmet needs, some evidence
+• 4 points: Generic segment definition, 1 unmet need, vague pain points
+• 1 point: Incorrect or no segments, no unmet needs
 
-IMPORTANT: All text content must be in English only.
+Dimension C - Market Analysis (10 points):
+• 10 points: 5+ competitors with positioning, market share/customer count, pricing models, emerging competitors, market gaps
+• 7 points: 3-4 competitors with positioning, some market data, key differentiators
+• 4 points: 1-2 competitors with minimal detail, lacks market data
+• 1 point: No competitors or completely irrelevant
+
+Dimension D - Market Insights (10 points):
+• 10 points: 3+ actionable positioning recommendations with rationale, TAM/SAM with $ estimates, pricing model with reasoning, beachhead market
+• 7 points: 2 positioning recommendations, market opportunities with general sizing
+• 4 points: 1 vague recommendation, mentions opportunities without sizing
+• 1 point: No actionable insights, irrelevant recommendations
+
+═══════════════════════════════════════════════════════════════
+CRITICAL REQUIREMENTS FOR HIGH SCORES (10 points):
+═══════════════════════════════════════════════════════════════
+
+✓ Use SPECIFIC numbers: "50-500 employees, $5M-$50M revenue" NOT "mid-size companies"
+✓ Name 5+ ACTUAL competitors with market data (market share, customer count, pricing)
+✓ Provide $ estimates for TAM/SAM (e.g., "$2.8B addressable market with calculation")
+✓ Include 3+ unmet needs with SUPPORTING EVIDENCE (percentages, costs, time data)
+✓ Cite SPECIFIC pricing models (per-seat $X-Y/month, usage-based, freemium, etc.)
+✓ Distinguish EXPLICIT vs IMPLICIT requirements (differentiation, PMF validation, strategic context)
+✓ Provide ACTIONABLE strategies with clear rationale, NOT generic advice ("focus on quality")
+
+Use the available tools to conduct comprehensive research across 4 dimensions:
+
+1. analyze_requirements tool:
+   - Identify BOTH explicit AND implicit requirements
+   - Explicit: What features/capabilities were mentioned?
+   - Implicit: Underlying business problem, differentiation opportunities, PMF validation needs
+   - Determine must-have vs nice-to-have features
+   - Consider strategic context and business constraints
+
+2. target_users tool:
+   - Define specific user segments (company size with employee count, revenue range, industry)
+   - Create detailed personas (specific job titles, departments, decision authority)
+   - Identify 3+ critical unmet needs with evidence
+   - Explain pain point severity and frequency
+   - Provide evidence (market data, user complaints)
+
+3. market_analysis tool:
+   - Research 5+ competitors with detailed positioning
+   - Include market share or customer count for each
+   - Document pricing models (per-seat, usage-based, etc.)
+   - Identify market trends and white space opportunities
+   - Note emerging competitors
+
+4. market_insights tool:
+   - Provide specific positioning strategies (vertical specialization with sub-segments)
+   - Calculate TAM/SAM with $ estimates and data sources
+   - Recommend pricing model with clear rationale
+   - Suggest beachhead market and GTM approach
+   - Include success metrics and benchmarks
+
+After gathering information, synthesize into a comprehensive report.
+
+Return in JSON format with these fields (all in English):
+- core_requirements: Explicit + implicit requirements + strategic context + must-have vs nice-to-have
+- target_users: Specific segments (size/revenue) + personas (roles) + 3+ evidence-based unmet needs
+- market_analysis: 5+ competitors with positioning, market share, pricing, and differentiators
+- market_insights: Actionable strategies with TAM/SAM estimates, pricing recommendations, and positioning
+
+CRITICAL: Be specific with numbers, provide evidence, focus on differentiation and actionable insights.
 """
                 
                 # 调用 LangGraph ReAct Agent
@@ -571,24 +636,197 @@ Return ONLY valid JSON, no other text:
         回退模式：直接使用 LLM | Fallback mode: Direct LLM call
         """
         prompt = f"""
-You are an experienced product researcher. The user has provided the following product requirements:
+You are an experienced product researcher conducting deep market and user research.
 
 User Requirement:
 {user_input}
 
-Please conduct the following research:
-1. Analyze core user requirements
-2. Conduct competitive market analysis
-3. Identify target user groups
-4. Provide key market insights
+═══════════════════════════════════════════════════════════════
+SCORING CRITERIA (Your response will be evaluated on 4 dimensions, 10 points each):
+═══════════════════════════════════════════════════════════════
 
-Please return the research results in JSON format with the following fields (all content must be in English):
-- core_requirements: Core requirement analysis (in English)
-- market_analysis: Market analysis (in English)
-- target_users: Target users description (in English)
-- market_insights: Market insights (in English)
+Dimension A - User Requirements (10 points):
+• 10 points: Identifies explicit AND implicit requirements, understands business problem, distinguishes must-have vs nice-to-have, considers strategic context
+• 7 points: Identifies most requirements, good understanding, minor gaps in implicit needs
+• 4 points: Surface-level needs only, partial understanding, misses implicit requirements
+• 1 point: Fails to identify needs, misinterprets problem
 
-IMPORTANT: All text content in the JSON response must be in English only.
+Dimension B - Target Users (10 points):
+• 10 points: Specific company size (employee count, revenue), detailed personas (job titles), 3+ unmet needs with evidence, pain point severity/frequency
+• 7 points: Main segments with detail, 2 unmet needs, some evidence
+• 4 points: Generic segment definition, 1 unmet need, vague pain points
+• 1 point: Incorrect or no segments, no unmet needs
+
+Dimension C - Market Analysis (10 points):
+• 10 points: 5+ competitors with positioning, market share/customer count, pricing models, emerging competitors, market gaps
+• 7 points: 3-4 competitors with positioning, some market data, key differentiators
+• 4 points: 1-2 competitors with minimal detail, lacks market data
+• 1 point: No competitors or completely irrelevant
+
+Dimension D - Market Insights (10 points):
+• 10 points: 3+ actionable positioning recommendations with rationale, TAM/SAM with $ estimates, pricing model with reasoning, beachhead market
+• 7 points: 2 positioning recommendations, market opportunities with general sizing
+• 4 points: 1 vague recommendation, mentions opportunities without sizing
+• 1 point: No actionable insights, irrelevant recommendations
+
+═══════════════════════════════════════════════════════════════
+CRITICAL REQUIREMENTS FOR HIGH SCORES (10 points):
+═══════════════════════════════════════════════════════════════
+
+✓ Use SPECIFIC numbers: "50-500 employees, $5M-$50M revenue" NOT "mid-size companies"
+✓ Name 5+ ACTUAL competitors with market data (market share, customer count, pricing)
+✓ Provide $ estimates for TAM/SAM (e.g., "$2.8B addressable market with calculation")
+✓ Include 3+ unmet needs with SUPPORTING EVIDENCE (percentages, costs, time data)
+✓ Cite SPECIFIC pricing models (per-seat $X-Y/month, usage-based, freemium, etc.)
+✓ Distinguish EXPLICIT vs IMPLICIT requirements (differentiation, PMF validation, strategic context)
+✓ Provide ACTIONABLE strategies with clear rationale, NOT generic advice ("focus on quality")
+
+═══════════════════════════════════════════════════════════════
+FEW-SHOT EXAMPLES (Use as quality guidelines, not templates to copy):
+═══════════════════════════════════════════════════════════════
+
+Example of EXCELLENT Response (Would Score 38-40/40):
+
+User Question: "I'm building an AI customer support agent for e-commerce. What are the key user pain points?"
+
+{{
+  "core_requirements": "Explicit requirements: Automate tier-1 customer support queries for e-commerce (order status, returns, shipping). Implicit requirements: (1) Differentiation opportunity - most chatbots lack deep integration with inventory/shipping systems; (2) PMF validation needed - must prove 24/7 multilingual support scales without proportional cost increase; (3) Must-have features: order-specific context awareness, seamless human handoff with context transfer. Nice-to-have: sentiment analysis, proactive outreach. Strategic context: E-commerce operates on thin margins (5-10%), so ROI must be clear within 3-6 months.",
+
+  "target_users": "Primary segment: E-commerce companies with 50-500 employees, handling 1,000-10,000 customer inquiries monthly, $5M-$50M annual revenue, primarily fashion, electronics, and food verticals. Personas: (1) Customer Support Managers (decision makers), (2) CX Directors (budget owners), (3) Operations VPs (ROI evaluators). Critical unmet needs with evidence: (1) 24/7 multilingual support without proportional cost scaling - current solutions require separate language models or 3x human agents for 3 languages, costing $180K/year vs $60K for AI solution; (2) Order-specific context awareness integrating real-time with inventory, shipping, payment systems - 73% of support tickets require checking order status across 3+ systems, taking 4-6 minutes per query; (3) Seamless human handoff when queries exceed AI capability with full context transfer - current chatbots lose conversation history, forcing customers to repeat information, causing 34% satisfaction drop.",
+
+  "market_analysis": "1. Zendesk AI - Market leader with 30%+ enterprise share, $49-$99/agent/month, strong in ticketing integration, 100K+ customers, weakness: expensive for SMBs. 2. Intercom Fin - AI agent with $13B valuation, $74-$132/seat/month, focuses on mid-market SaaS, 25K+ customers, weakness: not e-commerce optimized. 3. Ada - Specialized in e-commerce, serves 400+ brands including Shopify merchants, $500-$2000/month based on volume, strength: deep Shopify integration. 4. Gorgias - E-commerce focused, integrated with Shopify/WooCommerce, $29M ARR, $10-$750/month tiered pricing, 13K+ customers, strength: e-commerce native. 5. Kustomer (Meta) - CRM-integrated agent, enterprise positioning, $89-$179/user/month, weakness: complex setup. Market trends: AI customer support growing at 29.5% CAGR, reaching $11.14B in 2026. White space: Mid-market e-commerce (50-500 employees) underserved - too small for Zendesk enterprise, outgrowing basic chatbots.",
+
+  "market_insights": "Positioning strategies: (1) Vertical specialization - Focus exclusively on e-commerce sub-verticals (fashion: size/fit queries; electronics: technical specs; food: dietary restrictions) rather than horizontal customer support. Build domain-specific training data. (2) Integration-first approach - Launch with native Shopify, WooCommerce, BigCommerce integrations on day 1, not as afterthought. This is table stakes for e-commerce buyers. (3) Hybrid pricing model - Offer per-resolution pricing ($0.50-$1.50 per resolved ticket) instead of per-seat ($50-100/month), aligning with e-commerce's thin-margin ROI focus. Market sizing: TAM = $11.14B (global AI customer support market 2026). SAM = $2.8B (mid-market e-commerce segment with 50-500 employees, representing 45,000 companies globally × $62K average deal size). Target beachhead: Shopify Plus merchants (8,000+ stores with $1M+ revenue) as they have budget and integration needs. GTM approach: Partner with Shopify app store for distribution, offer 14-day free trial with guaranteed ROI calculator showing cost savings vs human agents."
+}}
+
+Why this scores 38-40/40: ✓ Explicit + implicit requirements ✓ Specific sizes (50-500 employees, $5M-$50M) ✓ 3 unmet needs with quantified evidence ✓ 5 competitors with market share, pricing ✓ TAM/SAM with calculation ✓ Specific positioning strategies
+
+Example of WEAK Response (Would Score 15-20/40) - What NOT to Do:
+
+{{
+  "core_requirements": "The user wants to build an AI chatbot for customer support in e-commerce. This will help companies handle customer questions automatically and reduce costs. The main requirement is to automate responses to common questions.",
+
+  "target_users": "The target users are e-commerce companies that need customer support. This includes online retailers and businesses that sell products online. They want to improve customer satisfaction and reduce support costs.",
+
+  "market_analysis": "There are several competitors in this space including Zendesk and Intercom. These are popular customer support platforms. The market is growing as more companies adopt AI technology. There are opportunities for new entrants to compete on features and pricing.",
+
+  "market_insights": "To succeed in this market, focus on providing good customer service and competitive pricing. Build a user-friendly interface and integrate with popular e-commerce platforms. Consider offering a free trial to attract customers. The market opportunity is significant as e-commerce continues to grow."
+}}
+
+Why this scores only 15-20/40: ✗ No implicit requirements ✗ Generic "e-commerce companies" ✗ No specific unmet needs or evidence ✗ Only 2 competitors, no market data ✗ No TAM/SAM estimates ✗ Vague recommendations
+
+═══════════════════════════════════════════════════════════════
+
+Now conduct comprehensive research across 4 dimensions:
+
+═══════════════════════════════════════════════════════════════
+1. CORE REQUIREMENTS ANALYSIS
+═══════════════════════════════════════════════════════════════
+
+Analyze BOTH explicit and implicit requirements:
+
+A. Explicit Requirements:
+   - What specific features/capabilities did the user mention?
+   - What problem are they trying to solve?
+
+B. Implicit Requirements (CRITICAL - don't skip):
+   - What is the underlying business problem?
+   - What differentiation opportunities exist in this market?
+   - What product-market fit validation is needed before building?
+   - What are the must-have vs nice-to-have features?
+   - What technical or business constraints should be considered?
+
+C. Strategic Context:
+   - Why is this product needed NOW?
+   - What would make this 10x better than alternatives?
+   - What are the key success criteria?
+
+═══════════════════════════════════════════════════════════════
+2. TARGET USERS ANALYSIS
+═══════════════════════════════════════════════════════════════
+
+Define target users with SPECIFIC details:
+
+A. Primary User Segment:
+   - Company size (employee count range, e.g., 50-500 employees)
+   - Revenue range or funding stage (e.g., $5M-$50M ARR)
+   - Industry/vertical (be specific)
+   - Geographic focus
+
+B. User Personas:
+   - Specific roles (job titles, e.g., "VP of Sales", "Customer Support Manager")
+   - Department/function
+   - Decision-making authority
+
+C. Critical Unmet Needs (provide 3+ with evidence):
+   - What specific pain points exist that current solutions don't address?
+   - Why are existing solutions inadequate? (cite specific limitations)
+   - How severe/frequent are these pain points?
+   - What evidence supports these unmet needs? (market data, user complaints, etc.)
+
+═══════════════════════════════════════════════════════════════
+3. MARKET ANALYSIS
+═══════════════════════════════════════════════════════════════
+
+Identify 5+ competitors with detailed information:
+
+For each competitor provide:
+- Company name
+- Market positioning (enterprise/mid-market/SMB)
+- Market share or customer count (if available, e.g., "30% market share" or "10,000+ customers")
+- Key strengths and differentiators
+- Pricing model (per-seat, usage-based, freemium, etc.)
+- Notable customers or use cases
+
+Also include:
+- Market trends and growth drivers
+- Emerging competitors or threats
+- Market gaps and white space opportunities
+
+═══════════════════════════════════════════════════════════════
+4. MARKET INSIGHTS & STRATEGY
+═══════════════════════════════════════════════════════════════
+
+Provide ACTIONABLE insights (not generic advice):
+
+A. Positioning Strategies (be specific):
+   - Vertical specialization: Which specific sub-segments to target? (e.g., "Focus on e-commerce fashion brands" not just "e-commerce")
+   - Differentiation approach: What unique value proposition? (be specific about HOW it's different)
+   - Competitive positioning: How to stand out from competitors? (specific strategies)
+
+B. Market Sizing (include numbers):
+   - TAM (Total Addressable Market): Provide estimate with $ amount (e.g., "$5.4B")
+   - SAM (Serviceable Addressable Market): Provide estimate (e.g., "$2.8B")
+   - Target segment: Number of companies with specific characteristics (e.g., "15,000 companies with 50-500 employees")
+   - Cite data sources when possible or indicate if estimated
+
+C. Go-to-Market Recommendations:
+   - Pricing model: (per-seat/usage-based/freemium/hybrid) with clear rationale for why
+   - Distribution channels: (direct sales/self-serve/partnerships) with reasoning
+   - Beachhead market: Which specific segment to target first and why?
+
+D. Success Metrics:
+   - Key metrics to track (be specific)
+   - Industry benchmarks (provide numbers if available)
+
+═══════════════════════════════════════════════════════════════
+
+Return results in JSON format with these exact fields (all in English):
+{{
+  "core_requirements": "Detailed analysis covering explicit requirements, implicit needs (differentiation, PMF validation), and strategic context",
+  "target_users": "Specific user segments with company size/revenue ranges, detailed personas with roles, and 3+ evidence-based unmet needs with severity/frequency",
+  "market_analysis": "5+ competitors with positioning, market share/customer count, pricing, and detailed differentiators. Include market trends and gaps.",
+  "market_insights": "Actionable positioning strategies with specific vertical focus, TAM/SAM estimates with numbers, pricing model recommendations with rationale, and beachhead market suggestion"
+}}
+
+CRITICAL REQUIREMENTS:
+- All content must be in English
+- Be specific with numbers, company sizes, revenue ranges, and market data
+- Provide actionable insights with clear rationale, not generic advice
+- Include evidence and data sources when possible
+- Focus on differentiation and strategic positioning
+- Distinguish between must-have and nice-to-have features
+- Identify implicit needs, not just explicit ones
 """
         
         response = self.simple_llm.invoke(prompt)
@@ -720,24 +958,114 @@ IMPORTANT:
 # FeasibilityEvaluator
 # ============================================================================
 
+def extract_used_citation_ids(text: str) -> set:
+    """
+    从文本中提取实际使用的引用编号 | Extract actually used citation IDs from text
+
+    Args:
+        text: LLM 生成的文本响应 | LLM generated text response
+
+    Returns:
+        实际使用的引用编号集合 | Set of actually used citation IDs
+    """
+    import re
+    # 匹配 [1], [2], [3] 等格式的引用
+    pattern = r'\[(\d+)\]'
+    matches = re.findall(pattern, text)
+    return set(int(m) for m in matches)
+
+
+def filter_citations_by_usage(citations: List[Dict], used_ids: set) -> List[Dict]:
+    """
+    过滤引用列表，只保留实际使用的引用 | Filter citations to keep only actually used ones
+
+    Args:
+        citations: 原始引用列表 | Original citations list
+        used_ids: 实际使用的引用编号集合 | Set of actually used citation IDs
+
+    Returns:
+        过滤后的引用列表 | Filtered citations list
+    """
+    if not used_ids:
+        return []
+    return [cite for cite in citations if cite.get('id') in used_ids]
+
+
 class FeasibilityEvaluator:
     """
     可行性评估专家智能体 | Feasibility Evaluator Agent
+    支持 RAG 检索增强，从知识库中获取相关参考资料
+    Supports RAG retrieval augmentation to get relevant references from knowledge base
     """
-    
-    def __init__(self, llm):
+
+    def __init__(self, llm, rag_retriever=None):
+        """
+        初始化可行性评估器 | Initialize Feasibility Evaluator
+
+        Args:
+            llm: 语言模型实例 | Language model instance
+            rag_retriever: RAG检索器实例（可选）| RAG retriever instance (optional)
+        """
         self.llm = llm
         self.name = "Feasibility Evaluator"
-    
+        self.rag_retriever = rag_retriever
+
+        if self.rag_retriever:
+            logger.info("✓ FeasibilityEvaluator initialized with RAG support")
+        else:
+            logger.info("FeasibilityEvaluator initialized without RAG support")
+
     @log_function_call
     def evaluate(self, user_input: str, research_result: Dict[str, Any], doc_content: str = "") -> Dict[str, Any]:
         """
         执行可行性评估 | Conduct feasibility assessment
         基于用户需求和研究结果进行评估（文档内容可选）
+        如果启用了RAG，会从知识库中检索相关参考资料
         """
         logger.info(f"FeasibilityEvaluator.evaluate() called")
-        
-        # 构建评估prompt（基于研究结果）
+
+        # RAG: 检索相关文档
+        rag_context = ""
+        citations = []
+
+        if self.rag_retriever:
+            try:
+                # 构建检索查询
+                query = f"{user_input} technical feasibility cost architecture risk compliance"
+                logger.info(f"RAG: Retrieving relevant documents for query...")
+
+                # 检查vector store状态
+                rag_status = self.rag_retriever.get_status()
+                logger.info(f"RAG: Vector store has {rag_status['chunks_in_vector_store']} chunks")
+
+                # 检索相关文档
+                from config import RAG_TOP_K
+                logger.info(f"RAG: Querying with top_k={RAG_TOP_K}")
+                retrieved_docs = self.rag_retriever.retrieve(query, top_k=RAG_TOP_K)
+
+                if retrieved_docs:
+                    rag_context, citations = self.rag_retriever.format_context_with_citations(retrieved_docs)
+                    logger.info(f"RAG: Retrieved {len(retrieved_docs)} relevant documents with {len(citations)} citations")
+                    # 记录引用的文档名
+                    for cite in citations:
+                        logger.info(f"RAG: Citation [{cite['id']}] - {cite['document']}, Page {cite['page']}, Score: {cite['relevance_score']}")
+                else:
+                    logger.warning(f"RAG: No relevant documents found (vector store has {rag_status['chunks_in_vector_store']} chunks)")
+            except Exception as e:
+                logger.warning(f"RAG retrieval failed: {e}")
+                rag_context = ""
+                citations = []
+
+        # 构建评估prompt（基于研究结果，可选包含RAG上下文）
+        rag_section = ""
+        if rag_context:
+            rag_section = f"""
+Reference Documents from Knowledge Base:
+{rag_context}
+
+IMPORTANT: When using information from the reference documents above, include citations in your response using the format [1], [2], etc. to indicate which reference document the information comes from.
+"""
+
         prompt = f"""
 You are a senior technical architect and project evaluation expert. Based on the following information, conduct a comprehensive feasibility assessment:
 
@@ -746,7 +1074,7 @@ User Requirement:
 
 Research Results:
 {json.dumps(research_result, ensure_ascii=False)}
-
+{rag_section}
 Please conduct a detailed feasibility assessment from the following aspects:
 
 1. Technical Feasibility Assessment
@@ -776,19 +1104,39 @@ Please return the evaluation results in JSON format with the following main fiel
 - compliance_requirements: Compliance requirements (in English)
 - risks_and_recommendations: Risks and recommendations (in English)
 
-IMPORTANT: All text content in the JSON response must be in English only.
+IMPORTANT:
+- All text content in the JSON response must be in English only.
+- If you referenced any information from the knowledge base documents, include the citation numbers [1], [2], etc. in your response text.
 """
-        
+
         response = self.llm.invoke(prompt)
-        
+
         evaluation_result = parse_json_response(response, [
             "technical_feasibility", "architecture_design", "cost_estimation",
             "compliance_requirements", "risks_and_recommendations"
         ])
-        logger.info(f"✓ FeasibilityEvaluator.evaluate() completed")
-        
+
+        # 过滤引用：只保留 LLM 实际在响应中使用的引用
+        # Filter citations: only keep citations actually used by LLM in the response
+        if citations:
+            # 从 LLM 响应中提取实际使用的引用编号
+            used_citation_ids = extract_used_citation_ids(response)
+            logger.info(f"RAG: LLM used citation IDs: {sorted(used_citation_ids)}")
+
+            # 过滤引用列表
+            filtered_citations = filter_citations_by_usage(citations, used_citation_ids)
+            logger.info(f"RAG: Filtered citations from {len(citations)} to {len(filtered_citations)}")
+
+            evaluation_result["citations"] = filtered_citations
+            logger.info(f"✓ FeasibilityEvaluator.evaluate() completed with {len(filtered_citations)} citations (filtered from {len(citations)})")
+        else:
+            evaluation_result["citations"] = []
+            logger.info(f"✓ FeasibilityEvaluator.evaluate() completed without citations")
+
         return {
             "agent": self.name,
             "evaluation_result": evaluation_result,
-            "status": "completed"
+            "status": "completed",
+            "rag_enabled": self.rag_retriever is not None,
+            "citations_count": len(evaluation_result["citations"])
         }

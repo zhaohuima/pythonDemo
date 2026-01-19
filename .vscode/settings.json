@@ -2,5 +2,6 @@
     "python-envs.defaultEnvManager": "ms-python.python:system",
     "python-envs.pythonProjects": [],
     "claude-code.apiEndpoint": "https://uyilink.com/",
-    "claude-code.apiKey": "sk-JxKoATahqmTKKUBmTP085PG5wWbBJa9JHo1bc3OEhmqEDwml"
+    "claude-code.apiKey": "sk-JxKoATahqmTKKUBmTP085PG5wWbBJa9JHo1bc3OEhmqEDwml",
+    "obsidian.vaultPath": "/Users/mazhaohui/pythonDemo/ProductMaster"
 }

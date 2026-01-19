@@ -20,3 +20,13 @@ PROJECT_NAME = "Product Master - Multi-Agent Orchestration System"
 
 # 日志级别 | Log Level
 LOG_LEVEL = "INFO"
+
+# RAG Configuration | RAG 配置
+RAG_ENABLED = True
+RAG_DOCUMENTS_DIR = "knowledge_base/documents"
+RAG_VECTOR_DB_DIR = "vector_db/chroma_db"
+RAG_COLLECTION_NAME = "product_knowledge"
+RAG_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+RAG_CHUNK_SIZE = 1000
+RAG_CHUNK_OVERLAP = 150
+RAG_TOP_K = 5  # Number of relevant chunks to retrieve

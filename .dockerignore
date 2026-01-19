@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志和输出
+logs/*.log
+outputs/*.json
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档
+*.md
+!README.md
+
+# 测试
+test_*.py
+*_test.py
+
+# 部署脚本（不需要在容器中）
+*.sh
+deploy_*.sh
+setup_*.sh
+fix_*.sh
+check_*.sh
+
+# 配置文件（敏感信息）
+# config.py 需要保留，但可以考虑使用环境变量
+
+# 临时文件
+.DS_Store
+*.tmp
+*.bak
+
+# RAG PDFs（如果很大，可以考虑挂载卷）
+# Agent RAG PDFs/
+
+# 向量数据库（通过卷挂载）
+# vector_db/

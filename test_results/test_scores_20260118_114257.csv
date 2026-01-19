@@ -1,0 +1,6 @@
+Test ID,Test Name,Category,Dim A (User Req),Dim B (Target Users),Dim C (Market Analysis),Dim D (Market Insights),Total Score,Percentage,Status
+1.1,AI Customer Support Agent,AI Agent,10,10,7,7,34,85.0%,Pass
+2.1,Internal Knowledge Management System,Enterprise Internal Software,7,7,7,7,28,70.0%,Pass
+3.1,Smart Home Security Camera,Hardware Product,7,7,7,7,28,70.0%,Pass
+4.1,Design Collaboration Tool,Software Tools (SaaS),7,7,7,7,28,70.0%,Pass
+5.1,Language Learning App,Consumer Mobile App,7,7,7,7,28,70.0%,Pass

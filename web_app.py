@@ -6,6 +6,12 @@ Provides web interface to demonstrate multi-agent orchestration system
 
 import os
 
+# 设置 HuggingFace 离线模式 | Set HuggingFace offline mode
+# 必须在导入 sentence_transformers 之前设置 | Must be set before importing sentence_transformers
+# 这样可以避免每次查询时尝试连接 huggingface.co 导致的超时问题
+os.environ['HF_HUB_OFFLINE'] = '1'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+
 # 修复 macOS SSL 证书权限问题 | Fix macOS SSL certificate permission issue
 # 必须在导入其他模块之前设置 | Must be set before importing other modules
 try:
@@ -25,6 +31,27 @@ from datetime import datetime
 import threading
 import queue
 from logger_config import logger
+
+# Import RAG components
+from config import RAG_ENABLED, RAG_DOCUMENTS_DIR, RAG_VECTOR_DB_DIR, RAG_COLLECTION_NAME, RAG_EMBEDDING_MODEL, RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP
+
+# Initialize RAG retriever (global instance)
+rag_retriever = None
+if RAG_ENABLED:
+    try:
+        from rag import RAGRetriever
+        rag_retriever = RAGRetriever(
+            documents_dir=RAG_DOCUMENTS_DIR,
+            persist_directory=RAG_VECTOR_DB_DIR,
+            collection_name=RAG_COLLECTION_NAME,
+            embedding_model=RAG_EMBEDDING_MODEL,
+            chunk_size=RAG_CHUNK_SIZE,
+            chunk_overlap=RAG_CHUNK_OVERLAP
+        )
+        logger.info("RAG Retriever initialized successfully")
+    except Exception as e:
+        logger.warning(f"Failed to initialize RAG Retriever: {e}")
+        rag_retriever = None
 
 app = Flask(__name__)
 CORS(app)
@@ -68,23 +95,29 @@ class StreamingOrchestrator:
     
     def __init__(self, execution_id):
         self.execution_id = execution_id
-        
+
         # 初始化 LLM
         logger.info(f"[{execution_id}] Initializing LLM...")
         self.llm = init_llm()
-        
-        # 初始化三个 Agent
+
+        # 初始化三个 Agent（FeasibilityEvaluator 使用 RAG）
         logger.info(f"[{execution_id}] Initializing Agents...")
         self.researcher = ProductResearcher(self.llm)
         self.doc_assistant = DocAssistant(self.llm)
-        self.evaluator = FeasibilityEvaluator(self.llm)
-        
+        # Pass RAG retriever to FeasibilityEvaluator
+        self.evaluator = FeasibilityEvaluator(self.llm, rag_retriever)
+
+        if rag_retriever:
+            logger.info(f"[{execution_id}] FeasibilityEvaluator initialized with RAG support")
+        else:
+            logger.info(f"[{execution_id}] FeasibilityEvaluator initialized without RAG support")
+
         # 创建 LangGraph 编排器
         logger.info(f"[{execution_id}] Creating LangGraph Orchestrator...")
         self.langgraph_orchestrator = LangGraphOrchestrator(
-            self.researcher, 
-            self.doc_assistant, 
-            self.evaluator, 
+            self.researcher,
+            self.doc_assistant,
+            self.evaluator,
             self.llm
         )
         logger.info(f"[{execution_id}] LangGraph Orchestrator created successfully")
@@ -350,10 +383,131 @@ def stream_status(execution_id):
     )
 
 
+# ============================================================================
+# RAG Document Management API Endpoints
+# ============================================================================
+
+@app.route('/api/documents', methods=['GET'])
+def list_documents():
+    """List all documents in the knowledge base"""
+    if not rag_retriever:
+        return jsonify({
+            'error': 'RAG is not enabled',
+            'documents': []
+        }), 200
+
+    try:
+        status = rag_retriever.get_status()
+        return jsonify({
+            'enabled': True,
+            'documents': status.get('documents', []),
+            'chunks_in_vector_store': status.get('chunks_in_vector_store', 0)
+        })
+    except Exception as e:
+        logger.error(f"Error listing documents: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/documents/upload', methods=['POST'])
+def upload_document():
+    """Upload PDF documents to the knowledge base"""
+    if not rag_retriever:
+        return jsonify({'error': 'RAG is not enabled'}), 400
+
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files provided'}), 400
+
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({'error': 'No files selected'}), 400
+
+    uploaded = []
+    errors = []
+
+    for file in files:
+        if file.filename == '':
+            continue
+
+        if not file.filename.lower().endswith('.pdf'):
+            errors.append(f"{file.filename}: Not a PDF file")
+            continue
+
+        try:
+            # Save file to knowledge base directory
+            filepath = os.path.join(RAG_DOCUMENTS_DIR, file.filename)
+            os.makedirs(RAG_DOCUMENTS_DIR, exist_ok=True)
+            file.save(filepath)
+            uploaded.append(file.filename)
+            logger.info(f"Uploaded document: {file.filename}")
+        except Exception as e:
+            errors.append(f"{file.filename}: {str(e)}")
+            logger.error(f"Error uploading {file.filename}: {e}")
+
+    return jsonify({
+        'uploaded': uploaded,
+        'errors': errors,
+        'message': f"Uploaded {len(uploaded)} file(s). Use /api/documents/reindex to index them."
+    })
+
+
+@app.route('/api/documents/<filename>', methods=['DELETE'])
+def delete_document(filename):
+    """Delete a document from the knowledge base"""
+    if not rag_retriever:
+        return jsonify({'error': 'RAG is not enabled'}), 400
+
+    try:
+        filepath = os.path.join(RAG_DOCUMENTS_DIR, filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            logger.info(f"Deleted document: {filename}")
+            return jsonify({
+                'message': f"Deleted {filename}. Use /api/documents/reindex to update the index."
+            })
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        logger.error(f"Error deleting {filename}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/documents/reindex', methods=['POST'])
+def reindex_documents():
+    """Rebuild the vector index from all documents"""
+    if not rag_retriever:
+        return jsonify({'error': 'RAG is not enabled'}), 400
+
+    try:
+        logger.info("Starting document reindexing...")
+        result = rag_retriever.rebuild_index()
+        logger.info(f"Reindexing completed: {result}")
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error reindexing documents: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/rag/status', methods=['GET'])
+def rag_status():
+    """Get RAG system status"""
+    if not rag_retriever:
+        return jsonify({
+            'enabled': False,
+            'message': 'RAG is not enabled'
+        })
+
+    try:
+        status = rag_retriever.get_status()
+        return jsonify(status)
+    except Exception as e:
+        logger.error(f"Error getting RAG status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("\n" + "="*80)
     print("🌐 Starting Web Application Server")
     print("="*80)
-    print("\nAccess URL: http://localhost:5000")
+    print("\nAccess URL: http://localhost:5001")
     print("Press Ctrl+C to stop the server\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

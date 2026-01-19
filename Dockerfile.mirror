@@ -1,0 +1,55 @@
+# ============================================================================
+# Product Master Docker 镜像（使用国内镜像源）
+# 用于模拟 EC2 生产环境的 Staging 测试
+# ============================================================================
+
+# 使用国内镜像源（清华大学镜像）
+FROM registry.cn-hangzhou.aliyuncs.com/acs/python:3.12-slim
+# 如果上面不可用，可以尝试：
+# FROM docker.mirrors.ustc.edu.cn/library/python:3.12-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置环境变量
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# 配置 pip 使用国内镜像源
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制依赖文件
+COPY requirements.txt .
+COPY requirements-docker.txt .
+
+# 安装 Python 依赖
+# 1. 先安装基础依赖
+RUN pip install -r requirements.txt
+
+# 2. 安装 RAG 相关依赖（CPU 版本的 PyTorch，使用国内镜像）
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install -r requirements-docker.txt
+
+# 复制应用代码
+COPY . .
+
+# 创建必要的目录
+RUN mkdir -p logs outputs knowledge_base/documents vector_db
+
+# 暴露端口
+EXPOSE 5000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/ || exit 1
+
+# 启动命令 - 使用 Gunicorn
+CMD ["gunicorn", "-c", "gunicorn_config.py", "web_app:app"]

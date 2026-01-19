@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Master - A Multi-Agent System to Provide Product Design Ideas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260115">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -24,15 +24,46 @@
             <p class="subtitle">A Multi-Agent System to Provide Product Design Ideas</p>
         </header>
 
+        <!-- Knowledge Base Section -->
+        <section class="knowledge-base-section" id="knowledgeBaseSection">
+            <h2>📚 Knowledge Base (RAG)</h2>
+            <div class="kb-container">
+                <div class="kb-status">
+                    <span class="kb-status-label">Status:</span>
+                    <span class="kb-status-value" id="ragStatus">Checking...</span>
+                    <span class="kb-chunks" id="ragChunks"></span>
+                </div>
+
+                <div class="kb-upload">
+                    <input type="file" id="pdfUpload" accept=".pdf" multiple style="display: none;">
+                    <button class="kb-btn upload-btn" onclick="document.getElementById('pdfUpload').click()">
+                        📤 Upload PDFs
+                    </button>
+                    <button class="kb-btn reindex-btn" onclick="reindexDocuments()">
+                        🔄 Reindex
+                    </button>
+                </div>
+
+                <div class="kb-documents" id="documentsList">
+                    <!-- Documents will be listed here -->
+                </div>
+            </div>
+        </section>
+
         <!-- User Input Section -->
         <section class="input-section">
             <h2>📝 Product Requirements Input</h2>
             <div class="input-container">
-                <textarea 
-                    id="userInput" 
-                    placeholder="Enter your product requirements...&#10;Example:&#10;We want to develop a supply chain management system for e-commerce enterprises.&#10;Functional requirements include:&#10;1. Real-time inventory tracking and management&#10;2. Supplier collaboration platform&#10;3. Order forecasting and optimization&#10;4. Cost analysis and reporting"
-                    rows="10"
-                ></textarea>
+                <div class="textarea-wrapper">
+                    <textarea
+                        id="userInput"
+                        placeholder="Enter your product requirements...&#10;Example:&#10;We want to develop a supply chain management system for e-commerce enterprises.&#10;Functional requirements include:&#10;1. Real-time inventory tracking and management&#10;2. Supplier collaboration platform&#10;3. Order forecasting and optimization&#10;4. Cost analysis and reporting"
+                        rows="10"
+                        maxlength="5000"
+                        oninput="updateCharCount()"
+                    ></textarea>
+                    <span class="char-counter" id="charCounter">0 / 5000</span>
+                </div>
                 <button id="submitBtn" class="submit-btn" onclick="startOrchestration()">
                     <span class="btn-text">Start Design</span>
                     <span class="btn-icon">▶</span>
@@ -150,6 +181,9 @@
             </div>
         </section>
 
+        <!-- Developer Credit -->
+        <div class="developer-credit">A tool developed by Zhaohui Ma</div>
+
         <!-- Loading Overlay -->
         <div class="loading-overlay" id="loadingOverlay" style="display: none;">
             <div class="loading-spinner"></div>
@@ -157,9 +191,6 @@
         </div>
     </div>
 
-    <!-- Developer Credit -->
-    <div class="developer-credit">A tool developed by Zhaohui Ma</div>
-
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=20260115"></script>
 </body>
 </html>
