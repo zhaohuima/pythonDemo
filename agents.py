@@ -537,13 +537,31 @@ Use the available tools to conduct comprehensive research across 4 dimensions:
 
 After gathering information, synthesize into a comprehensive report.
 
-Return in JSON format with these fields (all in English):
-- core_requirements: Explicit + implicit requirements + strategic context + must-have vs nice-to-have
-- target_users: Specific segments (size/revenue) + personas (roles) + 3+ evidence-based unmet needs
-- market_analysis: 5+ competitors with positioning, market share, pricing, and differentiators
-- market_insights: Actionable strategies with TAM/SAM estimates, pricing recommendations, and positioning
+═══════════════════════════════════════════════════════════════
+CRITICAL FORMATTING REQUIREMENTS:
+═══════════════════════════════════════════════════════════════
 
-CRITICAL: Be specific with numbers, provide evidence, focus on differentiation and actionable insights.
+To ensure clear display in the UI, format your JSON field values with proper line breaks:
+
+1. Use \\n\\n to separate major sections (e.g., between "Explicit requirements" and "Implicit requirements")
+2. Use \\n- to create bullet points for list items
+3. Ensure each distinct concept is on a new line
+4. Do NOT combine multiple concepts in a single line without line breaks
+
+Example of well-formatted JSON output:
+{{
+  "core_requirements": "Explicit requirements:\\n- Login functionality to enable personalized experiences\\n- AI-based coaching for tailored support\\n- Camera integration to scan homework\\n\\nImplicit requirements:\\n- Differentiation opportunity: deep curriculum integration\\n- PMF validation needed: prove scalability without compromising accuracy\\n- Must-have features: curriculum alignment, multi-language support\\n- Nice-to-have: gamification, sentiment analysis\\n\\nStrategic context:\\nRise of remote learning increases need for scalable, personalized tools.",
+
+  "target_users": "Primary User Segment:\\n- Company size: 50-500 employees\\n- Revenue range: $5M-$50M annually\\n- Industry: E-commerce, SaaS\\n\\nUser Personas:\\n- Customer Support Managers (decision makers)\\n- CX Directors (budget owners)\\n- Operations VPs (ROI evaluators)\\n\\nCritical Unmet Needs:\\n- 24/7 multilingual support without proportional cost scaling (evidence: costs $180K/year for human agents vs $60K for AI)\\n- Order-specific context awareness (evidence: 73% of tickets require checking 3+ systems, taking 4-6 minutes)\\n- Seamless human handoff with context transfer (evidence: 34% satisfaction drop when context is lost)"
+}}
+
+Return in JSON format with these fields (all in English):
+- core_requirements: Explicit + implicit requirements + strategic context + must-have vs nice-to-have (use \\n\\n between sections, \\n- for bullet points)
+- target_users: Specific segments (size/revenue) + personas (roles) + 3+ evidence-based unmet needs (use \\n\\n between sections, \\n- for bullet points)
+- market_analysis: 5+ competitors with positioning, market share, pricing, and differentiators (use \\n- for each competitor)
+- market_insights: Actionable strategies with TAM/SAM estimates, pricing recommendations, and positioning (use \\n\\n between sections, \\n- for bullet points)
+
+CRITICAL: Be specific with numbers, provide evidence, focus on differentiation and actionable insights. Use proper line breaks (\\n) to ensure clear formatting.
 """
                 
                 # 调用 LangGraph ReAct Agent
@@ -811,12 +829,32 @@ D. Success Metrics:
 
 ═══════════════════════════════════════════════════════════════
 
+═══════════════════════════════════════════════════════════════
+CRITICAL FORMATTING REQUIREMENTS:
+═══════════════════════════════════════════════════════════════
+
+To ensure clear display in the UI, format your JSON field values with proper line breaks:
+
+1. Use \\n\\n to separate major sections (e.g., between "Explicit requirements" and "Implicit requirements")
+2. Use \\n- to create bullet points for list items
+3. Ensure each distinct concept is on a new line
+4. Do NOT combine multiple concepts in a single line without line breaks
+
+Example of well-formatted JSON output:
+{{
+  "core_requirements": "Explicit requirements:\\n- Login functionality to enable personalized experiences\\n- AI-based coaching for tailored support\\n- Camera integration to scan homework\\n\\nImplicit requirements:\\n- Differentiation opportunity: deep curriculum integration\\n- PMF validation needed: prove scalability without compromising accuracy\\n- Must-have features: curriculum alignment, multi-language support\\n- Nice-to-have: gamification, sentiment analysis\\n\\nStrategic context:\\nRise of remote learning increases need for scalable, personalized tools.",
+
+  "target_users": "Primary User Segment:\\n- Company size: 50-500 employees\\n- Revenue range: $5M-$50M annually\\n- Industry: E-commerce, SaaS\\n\\nUser Personas:\\n- Customer Support Managers (decision makers)\\n- CX Directors (budget owners)\\n- Operations VPs (ROI evaluators)\\n\\nCritical Unmet Needs:\\n- 24/7 multilingual support without proportional cost scaling (evidence: costs $180K/year for human agents vs $60K for AI)\\n- Order-specific context awareness (evidence: 73% of tickets require checking 3+ systems, taking 4-6 minutes)\\n- Seamless human handoff with context transfer (evidence: 34% satisfaction drop when context is lost)"
+}}
+
+═══════════════════════════════════════════════════════════════
+
 Return results in JSON format with these exact fields (all in English):
 {{
-  "core_requirements": "Detailed analysis covering explicit requirements, implicit needs (differentiation, PMF validation), and strategic context",
-  "target_users": "Specific user segments with company size/revenue ranges, detailed personas with roles, and 3+ evidence-based unmet needs with severity/frequency",
-  "market_analysis": "5+ competitors with positioning, market share/customer count, pricing, and detailed differentiators. Include market trends and gaps.",
-  "market_insights": "Actionable positioning strategies with specific vertical focus, TAM/SAM estimates with numbers, pricing model recommendations with rationale, and beachhead market suggestion"
+  "core_requirements": "Detailed analysis covering explicit requirements, implicit needs (differentiation, PMF validation), and strategic context (use \\n\\n between sections, \\n- for bullet points)",
+  "target_users": "Specific user segments with company size/revenue ranges, detailed personas with roles, and 3+ evidence-based unmet needs with severity/frequency (use \\n\\n between sections, \\n- for bullet points)",
+  "market_analysis": "5+ competitors with positioning, market share/customer count, pricing, and detailed differentiators. Include market trends and gaps. (use \\n- for each competitor)",
+  "market_insights": "Actionable positioning strategies with specific vertical focus, TAM/SAM estimates with numbers, pricing model recommendations with rationale, and beachhead market suggestion (use \\n\\n between sections, \\n- for bullet points)"
 }}
 
 CRITICAL REQUIREMENTS:
@@ -827,6 +865,7 @@ CRITICAL REQUIREMENTS:
 - Focus on differentiation and strategic positioning
 - Distinguish between must-have and nice-to-have features
 - Identify implicit needs, not just explicit ones
+- Use proper line breaks (\\n) to ensure clear formatting in the UI
 """
         
         response = self.simple_llm.invoke(prompt)

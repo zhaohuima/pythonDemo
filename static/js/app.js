@@ -401,6 +401,44 @@ function cleanJsonString(str) {
     return cleaned.trim();
 }
 
+/**
+ * 格式化 Research 文本，将内联序号转换为 Markdown 列表
+ * 支持的模式：(1), (2), (3) 以及 1., 2., 3. 等
+ */
+function formatResearchText(text) {
+    if (!text || typeof text !== 'string') return text;
+
+    let formatted = text;
+
+    // ===== 处理 (1), (2), (3) 格式 =====
+    // 先处理分号、逗号后的序号
+    formatted = formatted.replace(/([;,])\s*\((\d+)\)\s*/g, '$1\n• ');
+
+    // 处理冒号后的序号（特殊处理，保留冒号）
+    formatted = formatted.replace(/:\s*\(1\)\s*/g, ':\n• ');
+
+    // 处理句号后的序号
+    formatted = formatted.replace(/\.\s*\((\d+)\)\s*/g, '.\n• ');
+
+    // 处理剩余的括号序号（如 (2), (3) 等）
+    formatted = formatted.replace(/\s*\((\d+)\)\s*/g, '\n• ');
+
+    // ===== 处理 1., 2., 3. 格式（如 Market Analysis 中的竞品列表）=====
+    // 匹配句号后跟空格再跟数字序号的模式，如 ". 1. " 或 ", 1. "
+    formatted = formatted.replace(/([.,;])\s+(\d+)\.\s+/g, '$1\n• ');
+
+    // 匹配文本开头或换行后的数字序号
+    formatted = formatted.replace(/^(\d+)\.\s+/gm, '• ');
+
+    // 清理多余的换行（超过2个连续换行变为2个）
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
+
+    // 确保 bullet point 格式一致
+    formatted = formatted.replace(/\n•\s*/g, '\n• ');
+
+    return formatted;
+}
+
 // 将JSON对象转换为Markdown格式
 function jsonToMarkdown(obj, level = 0, parentKey = '') {
     if (obj === null || obj === undefined) return '';
@@ -468,11 +506,13 @@ function jsonToMarkdown(obj, level = 0, parentKey = '') {
             } else {
                 // 简单值：作为键值对
                 const cleanedValue = cleanJsonString(String(value));
-                // 如果值很长，单独一行显示
-                if (cleanedValue.length > 100 || cleanedValue.includes('\n')) {
-                    markdown += `**${formattedKey}**:\n\n${cleanedValue}\n\n`;
+                // 对长文本进行格式化，将序号转换为列表
+                const formattedValue = formatResearchText(cleanedValue);
+                // 如果值很长或包含换行，单独一行显示
+                if (formattedValue.length > 100 || formattedValue.includes('\n')) {
+                    markdown += `**${formattedKey}**:\n\n${formattedValue}\n\n`;
                 } else {
-                    markdown += `**${formattedKey}**: ${cleanedValue}\n\n`;
+                    markdown += `**${formattedKey}**: ${formattedValue}\n\n`;
                 }
             }
         });
