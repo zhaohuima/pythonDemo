@@ -172,6 +172,84 @@ class SimpleLLM:
         """兼容旧版 API | Compatible with old API"""
         return self.invoke(prompt)
 
+    async def ainvoke(self, prompt: str, max_retries: int = 3) -> str:
+        """
+        异步调用 LLM 生成响应 | Async call LLM to generate response
+
+        用于并行 Skill 执行 | Used for parallel Skill execution
+        """
+        import asyncio
+
+        logger.debug(f"LLM ainvoke called - Model: {self.model_name}, Prompt length: {len(prompt)}")
+        url = f"{self.base_url}/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.temperature,
+            "max_tokens": 4096
+        }
+
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"LLM async API call attempt {attempt + 1}/{max_retries}")
+                async with httpx.AsyncClient(
+                    verify=False,
+                    timeout=httpx.Timeout(300.0, connect=30.0)
+                ) as client:
+                    response = await client.post(url, headers=headers, json=data)
+                    response.raise_for_status()
+                    result = response.json()
+                    content = result["choices"][0]["message"]["content"]
+                    logger.info(f"✓ LLM async API call successful, response length: {len(content)}")
+                    return content
+            except httpx.TimeoutException as e:
+                last_error = e
+                wait_time = 2 * (attempt + 1)
+                logger.warning(f"Async API call timeout, retrying in {wait_time}s ({attempt + 1}/{max_retries})...")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+                    continue
+            except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code
+                error_text = e.response.text
+
+                try:
+                    error_json = e.response.json()
+                    error_code = error_json.get("code", "unknown")
+                    error_msg = error_json.get("message", error_text)
+                    logger.error(f"LLM async API call failed (HTTP {status_code}, Code: {error_code}): {error_msg}")
+                except:
+                    logger.error(f"LLM async API call failed (HTTP {status_code}): {error_text}")
+
+                if status_code >= 500 or status_code == 429:
+                    last_error = e
+                    wait_time = 2 * (attempt + 1)
+                    logger.warning(f"Server error or rate limit, retrying in {wait_time}s ({attempt + 1}/{max_retries})...")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(wait_time)
+                        continue
+                else:
+                    logger.error(f"Client error (HTTP {status_code}), not retrying")
+                    raise Exception(f"LLM async API call failed (HTTP {status_code}): {error_text}")
+            except Exception as e:
+                last_error = e
+                wait_time = 2 * (attempt + 1)
+                logger.warning(f"Async API call failed, retrying in {wait_time}s ({attempt + 1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+                    continue
+                break
+
+        logger.error(f"LLM async call failed after {max_retries} attempts: {str(last_error)}")
+        raise Exception(f"LLM async call failed after {max_retries} retries: {str(last_error)}")
+
 
 def init_llm():
     """
@@ -389,20 +467,38 @@ class ProductResearcher:
     产品研究员智能体（LangGraph ReAct Agent）| Product Researcher Agent (LangGraph ReAct Agent)
     使用 LangGraph 的 prebuilt create_react_agent
     Uses LangGraph's prebuilt create_react_agent
+
+    支持两种模式 | Supports two modes:
+    1. 并行 Skill 模式（推荐）| Parallel Skill mode (recommended)
+    2. LangGraph ReAct Agent 模式 | LangGraph ReAct Agent mode
     """
-    
-    def __init__(self, llm: SimpleLLM):
+
+    def __init__(self, llm: SimpleLLM, use_parallel_skills: bool = True):
         """
         初始化产品研究员 | Initialize Product Researcher
-        
+
         Args:
             llm: 语言模型实例 | Language model instance
+            use_parallel_skills: 是否使用并行 Skill 模式 | Whether to use parallel Skill mode
         """
         self.simple_llm = llm
+        self.use_parallel_skills = use_parallel_skills
         self.name = "Product Researcher (LangGraph ReAct Agent)"
         self.react_agent = None
-        
-        # 创建 LangGraph ReAct Agent
+        self.parallel_orchestrator = None
+
+        # 初始化并行 Skill 编排器
+        if use_parallel_skills:
+            try:
+                from skills.parallel_orchestrator import ParallelSkillOrchestrator
+                self.parallel_orchestrator = ParallelSkillOrchestrator(llm)
+                logger.info("✓ Parallel Skill Orchestrator initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Parallel Skill Orchestrator: {e}")
+                logger.warning("⚠️  Falling back to LangGraph ReAct Agent mode")
+                self.use_parallel_skills = False
+
+        # 创建 LangGraph ReAct Agent（作为 fallback 或主模式）
         # 延迟检查 LangChain OpenAI 以避免 SSL 权限问题
         if LANGGRAPH_REACT_AVAILABLE:
             # 尝试导入 ChatOpenAI（延迟导入）
@@ -444,15 +540,30 @@ class ProductResearcher:
     def research(self, user_input: str) -> Dict[str, Any]:
         """
         执行需求调研 | Conduct requirement research
-        
+
         Args:
             user_input: 用户输入的产品需求 | User input product requirements
-            
+
         Returns:
             包含调研结果的字典 | Dictionary containing research results
         """
         logger.info(f"ProductResearcher.research() called - Input length: {len(user_input)}")
-        
+
+        # 优先使用并行 Skill 模式
+        if self.use_parallel_skills and self.parallel_orchestrator is not None:
+            try:
+                logger.info("Using Parallel Skill mode...")
+                import asyncio
+
+                # 运行异步并行研究
+                result = asyncio.run(self.parallel_orchestrator.research_with_timeout(user_input, timeout=120.0))
+                logger.info("✓ Parallel Skill research completed successfully")
+                # 包装成与原有格式一致的结构
+                return {"research_result": result}
+            except Exception as e:
+                logger.warning(f"Parallel Skill mode failed: {e}")
+                logger.warning("⚠️  Falling back to LangGraph ReAct Agent mode")
+
         # 尝试使用 LangGraph ReAct Agent
         if self.react_agent is not None:
             try:
